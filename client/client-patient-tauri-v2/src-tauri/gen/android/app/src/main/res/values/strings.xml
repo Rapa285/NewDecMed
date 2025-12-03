@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">client-patient-tauri-v2</string>
+    <string name="main_activity_title">client-patient-tauri-v2</string>
+</resources>

@@ -1,0 +1,6 @@
+/src/main/java/id/go/decmed/client_patient_v2/generated
+/src/main/jniLibs/**/*.so
+/src/main/assets/tauri.conf.json
+/tauri.build.gradle.kts
+/proguard-tauri.pro
+/tauri.properties

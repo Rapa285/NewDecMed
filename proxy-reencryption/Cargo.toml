@@ -1,8 +1,47 @@
 [package]
-name = "proxy-reencryption"
+name = "proxy_reencryption"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 
 [dependencies]
 axum = "0.8.4"
-tokio = { version = "1.45.0", features = ["rt-multi-thread"] }
+axum-extra = { version = "0.10.1", features = ["typed-header"] }
+tower = "0.5.2"
+tokio = { version = "1.44.2", features = ["rt-multi-thread"] }
+serde = "1"
+serde_json = "1"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+bip39 = { version = "2", features = ["rand"] }
+iota-sdk = { git = "https://github.com/iotaledger/iota", package = "iota-sdk" }
+iota-keys = { git = "https://github.com/iotaledger/iota", package = "iota-keys" }
+iota-config = { git = "https://github.com/iotaledger/iota", package = "iota-config" }
+iota-types = { git = "https://github.com/iotaledger/iota", package = "iota-types" }
+iota-json-rpc-types = { git = "https://github.com/iotaledger/iota", package = "iota-json-rpc-types" }
+shared_crypto = { git = "https://github.com/iotaledger/iota", package = "shared-crypto" }
+dotenv = "0.15"
+bcs = "0.1.4"
+reqwest = { version = "0.12", features = ["json", "multipart"] }
+schemars = "0.8"
+rand = "0.9"
+bip32 = "0.5"
+bincode = "2"
+umbral-pre = { version = "0.11", features = ["default-serialization"] }
+aes-gcm = { version = "0.10", features = ["aes"] }
+argon2 = { version = "0.5.3", features = ["alloc", "password-hash"] }
+hex = "0.4.3"
+regex = "1.11.1"
+generic-array = "1.2.0"
+k256 = "0.13.4"
+elliptic-curve = "0.13.8"
+jwt-simple = "0.12"
+dotenvy = "0.15.7"
+redis = { version = "0.32", features = ["r2d2", "json"] }
+r2d2 = "0.8"
+move-core-types = { git = "https://github.com/iotaledger/iota", package = "move-core-types" }
+strum = "0.27"
+strum_macros = "0.27"
+anyhow = "1.0"
+thiserror = "2.0"
+base64 = "0.22"
+chrono = "0.4"

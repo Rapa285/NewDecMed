@@ -1,0 +1,57 @@
+[package]
+name = "client-ministry"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "client_ministry_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+keyring = { version = "3", features = ["windows-native", "apple-native"] }
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+bip39 = { version = "2", features = ["rand"] }
+iota-sdk = { git = "https://github.com/iotaledger/iota", package = "iota-sdk" }
+iota-keys = { git = "https://github.com/iotaledger/iota", package = "iota-keys" }
+iota-config = { git = "https://github.com/iotaledger/iota", package = "iota-config" }
+iota-types = { git = "https://github.com/iotaledger/iota", package = "iota-types" }
+iota-json-rpc-types = { git = "https://github.com/iotaledger/iota", package = "iota-json-rpc-types" }
+shared_crypto = { git = "https://github.com/iotaledger/iota", package = "shared-crypto" }
+dotenv = "0.15"
+bcs = "0.1.4"
+schemars = "0.8"
+rand = "0.9"
+bip32 = "0.5"
+bincode = "2"
+umbral-pre = { version = "0.11", features = ["default-serialization", "serde"] }
+aes-gcm = { version = "0.10", features = ["aes"] }
+argon2 = { version = "0.5.3", features = ["alloc", "password-hash"] }
+hex = "0.4.3"
+regex = "1.11.1"
+generic-array = "1.2.0"
+k256 = "0.13.4"
+elliptic-curve = "0.13.8"
+tauri-plugin-fs = "2"
+chrono = "0.4"
+move-core-types = { git = "https://github.com/iotaledger/iota", package = "move-core-types" }
+base64 = "0.22"
+strum = "0.27"
+strum_macros = "0.27"
+anyhow = "1.0"
+thiserror = "2.0"
+tauri-plugin-http = { version = "2", features = ["json", "multipart"] }

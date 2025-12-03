@@ -1,16 +1,22 @@
 <script lang="ts">
-	import { getAuthContext } from '../(context)/auth-context.svelte';
 	import HomeAdmin from './home-admin.svelte';
 	import HomeAdministrative from './home-administrative.svelte';
 	import HomeMedical from './home-medical.svelte';
+	import {
+		ADMIN_ROLE,
+		ADMINISTRATIVE_PERSONNEL_ROLE,
+		MEDICAL_PERSONNEL_ROLE
+	} from '$lib/constants';
 
-	const authContext = getAuthContext();
+	let { data } = $props();
+
+	console.log(data.role);
 </script>
 
-{#if authContext.role === 'admin'}
-	<HomeAdmin />
-{:else if authContext.role === 'medical'}
+{#if data.role === ADMIN_ROLE}
+	<HomeAdmin addPersonnelFormData={data.addPersonnelForm!} />
+{:else if data.role === MEDICAL_PERSONNEL_ROLE}
 	<HomeMedical />
-{:else if authContext.role === 'administrative'}
+{:else if data.role === ADMINISTRATIVE_PERSONNEL_ROLE}
 	<HomeAdministrative />
 {/if}

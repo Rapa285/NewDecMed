@@ -1,0 +1,56 @@
+@import 'tailwindcss';
+
+@layer base {
+	button {
+		@apply flex max-w-max items-center justify-center gap-2 rounded-md;
+		@apply cursor-pointer;
+	}
+
+	input {
+		@apply rounded-md border px-3 py-1 outline-0 focus:ring-2;
+	}
+
+	label {
+		@apply font-medium;
+	}
+}
+
+@layer components {
+	.border-light {
+		@apply border border-zinc-200;
+	}
+
+	.btn {
+		@apply bg-[radial-gradient(circle,_rgba(0,0,0,1)_0%,_rgba(66,64,64,1)_100%)];
+		@apply text-white;
+		@apply px-4 py-1;
+	}
+
+	.btn-cancel {
+		@apply border border-zinc-200 bg-zinc-100;
+		@apply px-4 py-1;
+	}
+
+	.container-input-text {
+		@apply flex flex-col gap-1;
+	}
+
+	.error-input-text {
+		@apply text-sm font-medium text-red-500;
+	}
+
+	.input-base {
+		@apply border-zinc-200 focus:ring-zinc-300;
+	}
+
+	.input-error {
+		@apply border-red-200 bg-red-50 focus:ring-red-300;
+	}
+}
+
+@layer utilities {
+	.required-label::after {
+		content: '*';
+		color: theme(--color-red-500);
+	}
+}

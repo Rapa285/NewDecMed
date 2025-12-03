@@ -1,12 +1,22 @@
-import { AUTH_CONTEXT_DEFAULT_KEY } from '$lib/constants';
+import {
+	ADMIN_ROLE,
+	ADMINISTRATIVE_PERSONNEL_ROLE,
+	AUTH_CONTEXT_DEFAULT_KEY,
+	MEDICAL_PERSONNEL_ROLE
+} from '$lib/constants';
 import type { AuthContext } from '$lib/interfaces';
 import type { NavLink, Role } from '$lib/types';
+import { invoke } from '@tauri-apps/api/core';
 import { getContext, setContext } from 'svelte';
 
 class Auth implements AuthContext {
-	role = $state<Role>('admin');
+	role = $state<Role | null>(null);
+	isRegistered = $state<boolean | undefined>(undefined);
 	constructor() {}
 
+	getRegisterStatus = async () => {
+		this.isRegistered = (await invoke('is_signed_up')) as boolean;
+	};
 	getNav = () => {
 		const defaultNav: NavLink[] = [
 			{
@@ -22,7 +32,13 @@ class Auth implements AuthContext {
 		];
 
 		switch (this.role) {
-			case 'admin': {
+			case ADMIN_ROLE: {
+				return [...defaultNav];
+			}
+			case MEDICAL_PERSONNEL_ROLE: {
+				return [...defaultNav];
+			}
+			case ADMINISTRATIVE_PERSONNEL_ROLE: {
 				return [...defaultNav];
 			}
 			default: {

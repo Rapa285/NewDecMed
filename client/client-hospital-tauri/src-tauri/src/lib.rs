@@ -1,225 +1,82 @@
+mod activation;
+mod admin;
+mod administrative_personnel;
 mod constants;
+mod hospital_error;
+mod macros;
+mod medical_personnel;
+mod move_call;
+mod shared_cmds;
+mod signin;
+mod signout;
+mod signup;
 mod types;
 mod utils;
 
 use constants::{
-    GAS_BUDGET, HOSPITAL_ADMIN_CAP_ID, HOSPITAL_MODULE_NAME, HOSPITAL_PACKAGE_ID, HOSPITAL_TABLE_ID,
+    DECMED_ADDRESS_ID_OBJECT_ID, DECMED_ADDRESS_ID_OBJECT_VERSION, DECMED_GLOBAL_ADMIN_CAP_ID,
+    DECMED_HOSPITAL_ID_METADATA_OBJECT_ID, DECMED_HOSPITAL_ID_METADATA_OBJECT_VERSION,
+    DECMED_HOSPITAL_PERSONNEL_ID_ACCOUNT_OBJECT_ID,
+    DECMED_HOSPITAL_PERSONNEL_ID_ACCOUNT_OBJECT_VERSION, DECMED_MODULE_ADMIN,
+    DECMED_MODULE_HOSPITAL_PERSONNEL, DECMED_PACKAGE_ID, DECMED_PATIENT_ID_ACCOUNT_OBJECT_ID,
+    DECMED_PATIENT_ID_ACCOUNT_OBJECT_VERSION,
 };
-use iota_sdk::IotaClientBuilder;
-use iota_types::{
-    base_types::{IotaAddress, ObjectID},
-    crypto::IotaKeyPair,
-    gas_coin::NANOS_PER_IOTA,
-    transaction::{CallArg, Transaction},
-    Identifier,
-};
+use iota_types::{base_types::ObjectID, Identifier};
 use keyring::Entry;
+use move_call::MoveCall;
 use std::str::FromStr;
-use tauri::{async_runtime::Mutex, Manager, State};
-use types::{AppState, HospitalPackage, KeysEntry};
-
-use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
-use utils::{
-    construct_admin_cap_call_arg, construct_pt, construct_shared_object_call_arg,
-    construct_sponsored_tx_data, execute_tx, generate_64_bytes_seed, generate_iota_keys_ed,
-    get_ref_gas_price, move_call_read_only, parse_keys_entry, reserve_gas,
-};
-
-#[tauri::command]
-async fn is_app_activated(state: State<'_, Mutex<AppState>>) -> Result<bool, ()> {
-    let state = state.lock().await;
-
-    if let Ok(keys) = state.keys_entry.get_secret() {
-        let keys = parse_keys_entry(&keys);
-        if keys.activation_key.is_some() {
-            return Ok(true);
-        }
-    }
-
-    Ok(false)
-}
-
-#[tauri::command]
-async fn add_activation_key(state: State<'_, Mutex<AppState>>) -> Result<Value, ()> {
-    let state = state.lock().await;
-    let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA, 10).await;
-    let ref_gas_price = get_ref_gas_price(&state.iota_client).await;
-
-    let activation_key = uuid::Uuid::new_v4().to_string();
-    let id = "HOS_123";
-    let activation_key_id = format!("{activation_key};{id}");
-    let activation_key_id_hash = Sha256::digest(activation_key_id.into_bytes());
-    let activation_key_id_hash_str = format!("{:x}", activation_key_id_hash);
-
-    let admin_cap_call_arg =
-        construct_admin_cap_call_arg(&state.iota_client, state.hospital_package.admin_cap_id).await;
-    let activation_key_table_call_arg = construct_shared_object_call_arg(
-        state.hospital_package.activation_key_table_id,
-        state.hospital_package.activation_key_table_version,
-        true,
-    );
-    let activation_key_arg =
-        CallArg::Pure(bcs::to_bytes(activation_key_id_hash_str.as_str()).unwrap());
-
-    let pt = construct_pt(
-        String::from("add_activation_key"),
-        state.hospital_package.package_id,
-        state.hospital_package.module.clone(),
-        vec![],
-        vec![
-            admin_cap_call_arg,
-            activation_key_table_call_arg,
-            activation_key_arg,
-        ],
-    );
-
-    let keys_entry = parse_keys_entry(&state.keys_entry.get_secret().unwrap());
-
-    let tx_data = construct_sponsored_tx_data(
-        IotaAddress::from_str(keys_entry.admin_address.unwrap().as_str()).unwrap(),
-        gas_coins.clone(),
-        pt,
-        GAS_BUDGET,
-        ref_gas_price,
-        sponsor_account,
-    );
-
-    let signer = IotaKeyPair::decode(keys_entry.admin_secret_key.unwrap().as_str()).unwrap();
-    let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
-    execute_tx(tx, reservation_id).await;
-
-    Ok(json!({
-        "status": "Success",
-        "activationKey": activation_key,
-        "id": id
-    }))
-}
-
-#[tauri::command]
-async fn activate_app(
-    state: State<'_, Mutex<AppState>>,
-    activation_key: String,
-    id: String,
-) -> Result<Value, ()> {
-    let state = state.lock().await;
-    let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA, 10).await;
-    let ref_gas_price = get_ref_gas_price(&state.iota_client).await;
-
-    let activation_key_id = format!("{activation_key};{id}");
-    let activation_key_id_hash = Sha256::digest(activation_key_id.into_bytes());
-    let activation_key_id_hash_str = format!("{:x}", activation_key_id_hash);
-
-    let activation_key_table_call_arg = construct_shared_object_call_arg(
-        state.hospital_package.activation_key_table_id,
-        state.hospital_package.activation_key_table_version,
-        true,
-    );
-    let activation_key_arg =
-        CallArg::Pure(bcs::to_bytes(activation_key_id_hash_str.as_str()).unwrap());
-
-    let call_args = vec![activation_key_table_call_arg, activation_key_arg];
-    let pt = construct_pt(
-        String::from("use_activation_key"),
-        state.hospital_package.package_id,
-        state.hospital_package.module.clone(),
-        vec![],
-        call_args,
-    );
-
-    let random_seed = generate_64_bytes_seed();
-    let (random_iota_address, random_iota_keypair) = generate_iota_keys_ed(&random_seed);
-
-    let tx_data = construct_sponsored_tx_data(
-        random_iota_address,
-        gas_coins,
-        pt,
-        GAS_BUDGET,
-        ref_gas_price,
-        sponsor_account,
-    );
-
-    let signer = random_iota_keypair;
-    let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
-
-    execute_tx(tx, reservation_id).await;
-
-    let mut keys_entry = parse_keys_entry(&state.keys_entry.get_secret().unwrap());
-    keys_entry.activation_key = Some(activation_key_id_hash_str);
-    let keys_entry = serde_json::to_vec(&keys_entry).unwrap();
-    state.keys_entry.set_secret(&keys_entry).unwrap();
-
-    Ok(json!({
-        "status": "Success",
-    }))
-}
-
-#[tauri::command]
-async fn is_logged_in(state: State<'_, Mutex<AppState>>) -> Result<bool, ()> {
-    let state = state.lock().await;
-
-    if let Ok(keys) = state.keys_entry.get_secret() {
-        let keys = parse_keys_entry(&keys);
-        if keys.iota_key_pair.is_some() && keys.pre_secret_key.is_some() {
-            return Ok(true);
-        }
-    }
-
-    Ok(false)
-}
-
-#[tauri::command]
-async fn is_activation_key_used(state: State<'_, Mutex<AppState>>) -> Result<(), ()> {
-    let state = state.lock().await;
-
-    let activation_key = "act_key_1";
-    let activation_key_arg = CallArg::Pure(bcs::to_bytes(activation_key).unwrap());
-    let activation_key_table_call_arg = construct_shared_object_call_arg(
-        state.hospital_package.activation_key_table_id,
-        state.hospital_package.activation_key_table_version,
-        true,
-    );
-
-    let pt = construct_pt(
-        String::from("is_activation_key_used"),
-        state.hospital_package.package_id,
-        state.hospital_package.module.clone(),
-        vec![],
-        vec![activation_key_table_call_arg, activation_key_arg],
-    );
-
-    let keys_entry = parse_keys_entry(&state.keys_entry.get_secret().unwrap());
-    let sender = IotaAddress::from_str(keys_entry.admin_address.unwrap().as_str()).unwrap();
-    let response = move_call_read_only(sender, &state.iota_client, pt).await;
-
-    println!("{:#?}", response.results.unwrap()[0].return_values[0].0[0]);
-
-    Ok(())
-}
+use tauri::{async_runtime::Mutex, Manager};
+use types::{AppState, AuthState, DecmedPackage, KeysEntry, SignInState, SignUpState};
 
 fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Error>> {
-    let keys_entry = Entry::new("decmed_service_keys", "decmed_user").unwrap();
-    let iota_client = tauri::async_runtime::block_on(async {
-        IotaClientBuilder::default().build_localnet().await.unwrap()
-    });
-    let hospital_package = HospitalPackage {
-        package_id: ObjectID::from_str(HOSPITAL_PACKAGE_ID).unwrap(),
-        module: Identifier::from_str(HOSPITAL_MODULE_NAME).unwrap(),
-        activation_key_table_id: ObjectID::from_str(HOSPITAL_TABLE_ID).unwrap(),
-        activation_key_table_version: 5,
-        admin_cap_id: ObjectID::from_str(HOSPITAL_ADMIN_CAP_ID).unwrap(),
+    let keys_entry = Entry::new("decmed_service_keys", "decmed_user")?;
+    let decmed_package = DecmedPackage {
+        package_id: ObjectID::from_str(DECMED_PACKAGE_ID)?,
+        module_hospital_personnel: Identifier::from_str(DECMED_MODULE_HOSPITAL_PERSONNEL)?,
+        module_admin: Identifier::from_str(DECMED_MODULE_ADMIN)?,
+
+        address_id_object_id: ObjectID::from_str(DECMED_ADDRESS_ID_OBJECT_ID)?,
+        address_id_object_version: DECMED_ADDRESS_ID_OBJECT_VERSION,
+        hospital_id_metadata_object_id: ObjectID::from_str(DECMED_HOSPITAL_ID_METADATA_OBJECT_ID)?,
+        hospital_id_metadata_object_version: DECMED_HOSPITAL_ID_METADATA_OBJECT_VERSION,
+        hospital_personnel_id_account_object_id: ObjectID::from_str(
+            DECMED_HOSPITAL_PERSONNEL_ID_ACCOUNT_OBJECT_ID,
+        )?,
+        hospital_personnel_id_account_object_version:
+            DECMED_HOSPITAL_PERSONNEL_ID_ACCOUNT_OBJECT_VERSION,
+        patient_id_account_object_id: ObjectID::from_str(DECMED_PATIENT_ID_ACCOUNT_OBJECT_ID)?,
+        patient_id_account_object_version: DECMED_PATIENT_ID_ACCOUNT_OBJECT_VERSION,
+
+        global_admin_cap_id: ObjectID::from_str(DECMED_GLOBAL_ADMIN_CAP_ID)?,
     };
     let new_keys_entry = KeysEntry {
+        id: None,
         admin_address: Some(String::from(
-            "0x7c228da2e5b99ed280a2a3b9214a70b09a9550b0d3e63a12aaac7b045d7ce5af",
+            "0x52a65ae806223e49aaff1cf7f670fee87c1767de1d200a661c1fee44a61fc37f",
         )),
         admin_secret_key: Some(String::from(
-            "iotaprivkey1qzw992dxx6mtf7z9amphg3e5qldult6ea9d70hemepgt9rzznlf65jnxxnp",
+            "iotaprivkey1qpfc5nqsvs64p40347h0vcdxz3pgfn72uznw4pfvkak59fhpevxs73z6kwn",
         )),
         activation_key: None,
         iota_address: None,
         iota_key_pair: None,
         pre_secret_key: None,
+        pre_public_key: None,
+        iota_nonce: None,
+        pre_nonce: None,
+    };
+    let signin_state = SignInState { pin: None };
+    let signup_state = SignUpState {
+        seed_words: None,
+        pin: None,
+    };
+    let auth_state = AuthState {
+        is_signed_up: false,
+        role: None,
+        session_pin: Some("123456".to_string()),
+    };
+    let move_call = MoveCall {
+        decmed_package: decmed_package.clone(),
     };
 
     match keys_entry.get_secret() {
@@ -239,9 +96,12 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
     }
 
     app.manage(Mutex::new(AppState {
+        administrative_data: None,
+        auth_state,
         keys_entry,
-        iota_client,
-        hospital_package,
+        move_call,
+        signin_state,
+        signup_state,
     }));
 
     Ok(())
@@ -250,14 +110,34 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(setup)
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            is_app_activated,
-            add_activation_key,
-            activate_app,
-            is_logged_in,
-            is_activation_key_used
+            activation::global_admin_add_activation_key,
+            activation::hospital_admin_add_activation_key,
+            activation::activate_app,
+            signup::generate_mnemonic,
+            signup::signup,
+            signup::is_signed_up,
+            signout::signout,
+            signout::reset,
+            signin::signin,
+            shared_cmds::validate_pin,
+            shared_cmds::validate_confirm_pin,
+            shared_cmds::get_profile,
+            shared_cmds::update_profile,
+            shared_cmds::auth_status,
+            admin::get_hospital_personnels,
+            medical_personnel::new_medical_record,
+            medical_personnel::get_medical_record,
+            medical_personnel::get_medical_record_update,
+            medical_personnel::get_read_access_medical_personnel,
+            medical_personnel::get_update_access_medical_personnel,
+            medical_personnel::update_medical_record,
+            administrative_personnel::get_administrative_data,
+            administrative_personnel::get_read_access_administrative_personnel,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
