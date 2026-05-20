@@ -6,7 +6,7 @@
 	import { AdminHomeState } from './admin-state.svelte';
 	import { Button, Label, PinInput, REGEXP_ONLY_DIGITS } from 'bits-ui';
 	import { cn } from '$lib/utils';
-	import { Copy } from '@lucide/svelte';
+	import { Copy, RefreshCcw } from '@lucide/svelte';
 
 	type Props = {
 		addPersonnelFormData: SuperValidated<Infer<AddPersonnelSchemaStep2>>;
@@ -150,16 +150,31 @@
 							</p>
 						</div>
 						<div class="flex items-center gap-2">
-							<button
-								onclick={() => {
-									navigator.clipboard.writeText(personnel.activation_key);
-								}}
-								class="cursor-pointer"
-							>
-								<Copy size={14} />
-							</button>
-							<p>{personnel.activation_key}</p>
-						</div>
+						<button
+							onclick={() => {
+								navigator.clipboard.writeText(personnel.activation_key);
+							}}
+							class="cursor-pointer"
+						>
+							<Copy size={14} />
+						</button>
+						<p class="text-sm text-zinc-500">{personnel.activation_key}</p>
+						<button
+							onclick={() => {
+								adminHomeState.updatePersonnelActivationKey({
+									personnelId: personnel.id,
+									role: personnel.role
+								});
+							}}
+							class="cursor-pointer"
+						>
+							{#if adminHomeState.isLoadingUpdateActivationKey}
+								<RefreshCcw size={14} class="animate-spin" />
+							{:else}
+								<RefreshCcw size={14} />
+							{/if}
+						</button>
+					</div>
 					</div>
 				{/each}
 			{:else}

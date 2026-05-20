@@ -206,6 +206,101 @@ pub async fn hospital_admin_add_activation_key(
 }
 
 #[tauri::command]
+pub async fn update_personnel_activation_key(
+    state: State<'_, Mutex<AppState>>,
+    personnel_id: String,
+    role: String,
+) -> Result<SuccessResponse<CommandHospitalAdminAddActivationKeyResponse>, HospitalError> {
+    let state = state.lock().await;
+    let keys_entry = parse_keys_entry(&state.keys_entry.get_secret().context(current_fn!())?)
+        .context(current_fn!())?;
+
+    let session_pin = state
+        .auth_state
+        .session_pin
+        .clone()
+        .ok_or(anyhow!("Session PIN not found").context(current_fn!()))?;
+
+    let (hospital_admin_pre_public_key, hospital_admin_iota_address, hospital_admin_iota_key_pair) =
+        {
+            let (_, hospital_admin_pre_public_key) =
+                get_pre_keys_from_keys_entry(&keys_entry, session_pin.clone())
+                    .context(current_fn!())?;
+            let hospital_admin_iota_address =
+                get_iota_address_from_keys_entry(&keys_entry).context(current_fn!())?;
+            let hospital_admin_iota_key_pair =
+                get_iota_key_pair_from_keys_entry(&keys_entry, session_pin)
+                    .context(current_fn!())?;
+
+            (
+                hospital_admin_pre_public_key,
+                hospital_admin_iota_address,
+                hospital_admin_iota_key_pair,
+            )
+        };
+
+    let new_activation_key = uuid::Uuid::new_v4().to_string();
+
+    let (personnel_id_part_hash, encoded_activation_key, metadata) = {
+        let (personnel_id_part_hash, _) =
+            decode_hospital_personnel_id_to_argon(personnel_id.clone()).context(current_fn!())?;
+
+        let encoded_activation_key =
+            encode_activation_key(new_activation_key.clone(), personnel_id.clone())
+                .context(current_fn!())?;
+
+        let role_type = match role.as_str() {
+            "AdministrativePersonnel" => HospitalPersonnelRole::AdministrativePersonnel,
+            "MedicalPersonnel" => HospitalPersonnelRole::MedicalPersonnel,
+            _ => return Err(HospitalError::Anyhow(anyhow!("Invalid role argument."))),
+        };
+
+        let hospital_personnel_metadata = HospitalPersonnelMetadata {
+            activation_key: new_activation_key.clone(),
+            id: personnel_id.clone(),
+            role: role_type,
+        };
+        let hospital_personnel_metadata_bytes =
+            serde_json::to_vec(&hospital_personnel_metadata).context(current_fn!())?;
+        let (hospital_personnel_metadata_capsule, enc_hospital_personnel_metadata) = encrypt(
+            &hospital_admin_pre_public_key,
+            &hospital_personnel_metadata_bytes,
+        )
+        .map_err(|e| anyhow!(e.to_string()).context(current_fn!()))?;
+
+        let metadata = MoveCallHospitalAdminAddActivationKeyPayload {
+            capsule: serde_serialize_to_base64(&hospital_personnel_metadata_capsule)
+                .context(current_fn!())?,
+            enc_metadata: STANDARD.encode(enc_hospital_personnel_metadata),
+        };
+
+        (personnel_id_part_hash, encoded_activation_key, metadata)
+    };
+
+    let _ = state
+        .move_call
+        .update_account_activation_key(
+            encoded_activation_key,
+            serde_serialize_to_base64(&metadata).context(current_fn!())?,
+            personnel_id_part_hash,
+            hospital_admin_iota_address,
+            hospital_admin_iota_key_pair,
+        )
+        .await
+        .context(current_fn!())?;
+
+    let data = CommandHospitalAdminAddActivationKeyResponse {
+        activation_key: new_activation_key,
+        id: personnel_id,
+    };
+
+    Ok(SuccessResponse {
+        status: ResponseStatus::Success,
+        data,
+    })
+}
+
+#[tauri::command]
 pub async fn activate_app(
     state: State<'_, Mutex<AppState>>,
     activation_key: String,

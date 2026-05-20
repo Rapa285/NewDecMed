@@ -117,6 +117,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             activation::global_admin_add_activation_key,
             activation::hospital_admin_add_activation_key,
+            activation::update_personnel_activation_key,
             activation::activate_app,
             signup::generate_mnemonic,
             signup::signup,

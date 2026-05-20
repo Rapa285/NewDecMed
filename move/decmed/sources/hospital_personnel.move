@@ -548,11 +548,13 @@ public(package) fun signup_test(
 
 /// ## Params
 /// - `activation_key`: argon_hash(<raw_uuid_v4>@<raw_id>)
-/// - `id`: argon_hash(raw_id)
+/// - `metadata`: Base64 encoded encrypted metadata
+/// - `personnel_id`: argon_hash(raw_id)
 entry fun update_account_activation_key(
     activation_key: String,
     address_id: &AddressId,
     hospital_personnel_id_account: &mut HospitalPersonnelIdAccount,
+    metadata: String,
     personnel_id: String,
     ctx: &TxContext,
 )
@@ -573,6 +575,11 @@ entry fun update_account_activation_key(
     let hospital_personnel_account = hospital_personnel_id_account_table.borrow_mut(hospital_personnel_id);
     hospital_personnel_account.set_activation_key(activation_key);
     hospital_personnel_account.set_is_activation_key_used(false);
+
+    let hospital_admin_account = hospital_personnel_id_account_table.borrow_mut(hospital_admin_id);
+    let hospital_admin_account_personnels = hospital_admin_account.borrow_mut_personnels().borrow_mut();
+    let personnel_metadata = hospital_admin_account_personnels.get_mut(&hospital_personnel_id);
+    personnel_metadata.set_metadata(metadata);
 }
 
 /// ## Params

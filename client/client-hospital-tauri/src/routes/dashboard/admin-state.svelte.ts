@@ -5,6 +5,7 @@ import type {
 	AddPersonnelSchemaStep2,
 	HospitalPersonnel,
 	InvokeHospitalAdminAddActivationKeyResponse,
+	Role,
 	SuccessResponse
 } from '$lib/types';
 import { tryCatchAsVal } from '$lib/utils';
@@ -21,6 +22,7 @@ export class AdminHomeState {
 	currentStep = $state(1);
 	addPersonnelDialogOpen = $state(false);
 	askPin = $state(false);
+	isLoadingUpdateActivationKey = $state(false);
 	something: Infer<AddPersonnelSchemaStep2> | undefined = undefined;
 	addPersonnelFormMeta: SuperForm<Infer<AddPersonnelSchemaStep2>>;
 	accounts: Account[] = [
@@ -107,4 +109,31 @@ export class AdminHomeState {
 	};
 
 	refetchPersonnels = $state<Promise<HospitalPersonnel[]>>(this.getHospitalPersonnels());
+
+	updatePersonnelActivationKey = async ({
+		personnelId,
+		role
+	}: {
+		personnelId: string;
+		role: Role;
+	}) => {
+		this.isLoadingUpdateActivationKey = true;
+
+		const resInvokeUpdatePersonnelActivationKey = await tryCatchAsVal(async () => {
+			return (await invoke('update_personnel_activation_key', {
+				personnelId,
+				role
+			})) as SuccessResponse<InvokeHospitalAdminAddActivationKeyResponse>;
+		});
+
+		if (!resInvokeUpdatePersonnelActivationKey.success) {
+			this.isLoadingUpdateActivationKey = false;
+			toast.error(resInvokeUpdatePersonnelActivationKey.error);
+			return;
+		}
+
+		this.refetchPersonnels = this.getHospitalPersonnels();
+		this.isLoadingUpdateActivationKey = false;
+		toast.success('Activation key updated successfully');
+	};
 }
