@@ -38,3 +38,9 @@ chain-id = "cccad25c"
 original-published-id = "0x1da496ea0919fb7f6c297108ee904ae251f8e1cbf4b32ecfe000af46dbb1515d"
 latest-published-id = "0x1da496ea0919fb7f6c297108ee904ae251f8e1cbf4b32ecfe000af46dbb1515d"
 published-version = "1"
+
+[env.testnet]
+chain-id = "2304aa97"
+original-published-id = "0x35c5f3bcca0053dd6f8f1a68e3a6470fd9e931f18f01e409faaf15104b0148fe"
+latest-published-id = "0x35c5f3bcca0053dd6f8f1a68e3a6470fd9e931f18f01e409faaf15104b0148fe"
+published-version = "1"
