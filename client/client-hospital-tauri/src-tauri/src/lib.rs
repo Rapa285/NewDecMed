@@ -52,10 +52,10 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
     let new_keys_entry = KeysEntry {
         id: None,
         admin_address: Some(String::from(
-            "0x52a65ae806223e49aaff1cf7f670fee87c1767de1d200a661c1fee44a61fc37f",
+            "0x1838dedc7713e3157e5647e0fda607903f9edcffc14841475cbab49c452f18aa",
         )),
         admin_secret_key: Some(String::from(
-            "iotaprivkey1qpfc5nqsvs64p40347h0vcdxz3pgfn72uznw4pfvkak59fhpevxs73z6kwn",
+            "iotaprivkey1qfdzyczmh7zdrd739hj3t2gt0ph0t2743t590luk6j4yaxz6r2hjvwvzzqh",
         )),
         activation_key: None,
         iota_address: None,

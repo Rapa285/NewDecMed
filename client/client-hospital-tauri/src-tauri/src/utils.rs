@@ -500,7 +500,7 @@ pub fn get_iota_key_pair_from_keys_entry(
             .decode(keys_entry.iota_nonce.as_ref().ok_or(
                 anyhow!("IOTA Key Pair Nonce not found on keys entry").context(current_fn!()),
             )?)
-            .context(current_fn!())?;
+            .context(current_fn!())?;    
     let iota_key_pair = aes_decrypt(
         &iota_key_pair,
         &sha_hash(pin.as_bytes()),
