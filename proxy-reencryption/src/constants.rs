@@ -1,8 +1,8 @@
 // pub const IOTA_URL: &str = "https://live-sturgeon-needlessly.ngrok-free.app";
 // pub const GAS_STATION_BASE_URL: &str = "https://ec7f-114-122-115-51.ngrok-free.app/v1";
-pub const IOTA_URL: &str = "https://api.testnet.iota.cafe";
+pub const IOTA_URL: &str = "https://103.107.4.64:9000";
 pub const GAS_STATION_BASE_URL: &str = "http://103.107.4.68:9527/v1";
-pub const GAS_BUDGET: u64 = 10_000_000;
+pub const GAS_BUDGET: u64 = 50_000_000;
 pub const _HASH_SALT: &str = "169224A2BE2B267684F93A9CE38080D359BD774741FD3AE738D09B657A1A8104";
 pub const IPFS_BASE_URL: &str = "http://103.107.4.68:9094";
 pub const IPFS_GATEWAY_BASE_URL: &str = "http://103.107.4.68:8080";
@@ -21,7 +21,7 @@ pub const DECMED_PACKAGE_ID: &str =
     "0x69c826e6adcec1efdcaab1034fd45afb4faca267da6717059b1b5bde6fb93ee6";
 pub const DECMED_MODULE_ADMIN: &str = "admin";
 
-pub const DECMED_ADDRESS_ID_OBJECT_ID: &str =
+pub const DECMED_ADDRESS_ID_OBJECT_ID: &str = 
     "0x7620e5db5d4796a716979af2b4b40a48e0294e721426bb865668c990452e22ca";
 pub const DECMED_ADDRESS_ID_OBJECT_VERSION: u64 = 545100453;
 pub const DECMED_HOSPITAL_ID_METADATA_OBJECT_ID: &str =

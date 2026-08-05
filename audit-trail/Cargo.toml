@@ -1,0 +1,16 @@
+[package]
+name = "audit-trail"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum = "0.8.4"
+axum-extra = { version = "0.10.1", features = ["typed-header"] }
+tokio = { version = "1.44.2", features = ["rt-multi-thread", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
+anyhow = "1.0"
+thiserror = "2.0"
+dotenvy = "0.15.7"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1.24.0", features = ["v7"] }

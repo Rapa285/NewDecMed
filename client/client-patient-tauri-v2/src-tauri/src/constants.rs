@@ -1,11 +1,11 @@
 // pub const IOTA_URL: &str = "https://live-sturgeon-needlessly.ngrok-free.app";
 // pub const GAS_STATION_BASE_URL: &str = "https://ec7f-114-122-115-51.ngrok-free.app/v1";
-pub const IOTA_URL: &str = "https://api.testnet.iota.cafe";
-pub const GAS_STATION_BASE_URL: &str = "http://103.107.4.68:9527/v1";
+pub const IOTA_URL: &str = "http://127.0.0.1:9000";
+pub const GAS_STATION_BASE_URL: &str = "http://103.107.4.68:9528/v1";
 pub const GAS_BUDGET: u64 = 50_000_000;
 pub const HASH_SALT: &str = "169224A2BE2B267684F93A9CE38080D359BD774741FD3AE738D09B657A1A8104";
 pub const PROXY_BASE_URL: &str = "http://localhost:4000/api/v1";
-pub const IPFS_GATEWAY_BASE_URL: &str = "http://127.0.0.1:8080";
+pub const IPFS_GATEWAY_BASE_URL: &str = "http://103.107.4.68:8080";
 
 pub const DECMED_MODULE_PATIENT: &str = "patient";
 

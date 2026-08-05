@@ -345,6 +345,15 @@ impl Utils {
         package_id: AccountAddress,
         proxy_address: IotaAddress,
     ) -> Result<IotaObjectData, ProxyError> {
+
+        // --- LETAKKAN PRINTLN DI SINI ---
+        println!("=== DEBUG GET PROXY CAP ===");
+        println!("Target Proxy Address : {}", proxy_address);
+        println!("Target Package ID    : {}", package_id);
+        println!("Target Module        : {}", module);
+        println!("===========================");
+        // --------------------------------
+
         let query = IotaObjectResponseQuery {
             filter: Some(IotaObjectDataFilter::StructType(StructTag {
                 address: package_id,

@@ -1,0 +1,7 @@
+
+pub const IOTA_URL: &str = "https://103.107.4.64:9000";
+pub const GAS_STATION_BASE_URL: &str = "http://103.107.4.68:9527/v1";
+pub const GAS_BUDGET: u64 = 50_000_000;
+pub const _HASH_SALT: &str = "169224A2BE2B267684F93A9CE38080D359BD774741FD3AE738D09B657A1A8104";
+pub const IPFS_BASE_URL: &str = "http://103.107.4.68:9094";
+pub const IPFS_GATEWAY_BASE_URL: &str = "http://103.107.4.68:8080";
