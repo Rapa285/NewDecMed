@@ -27,9 +27,17 @@ impl Handlers {
         let cid = Self::add_and_pin_to_ipfs(audit_record).await?;
 
         // add cid ke IOTA
+        // uuid
+        // ipfs cid
         
-        // add indexing ke postgres
 
+        // add indexing ke postgres
+        // uuid
+        // ts
+        // event type
+        // actor
+        // ipfs cid
+        // iota id
 
         Ok(String::from("fungsi berhasil"))
     }
