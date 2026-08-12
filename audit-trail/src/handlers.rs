@@ -6,6 +6,7 @@ use crate::{
     audit_error::AuditError,
     // types::{ExecuteTxResponse, ReserveGasResponse, SuccessResponse, UtilIpfsAddResponse},
     types::{UtilIpfsAddResponse},
+    utils::Utils,
 };
 use uuid::Uuid;
 
@@ -24,7 +25,7 @@ impl Handlers {
             data,
         };
 
-        let cid = Self::add_and_pin_to_ipfs(audit_record).await?;
+        let cid = Utils::add_and_pin_to_ipfs(audit_record).await?;
 
         // add cid ke IOTA
         // uuid
@@ -42,10 +43,18 @@ impl Handlers {
         Ok(String::from("fungsi berhasil"))
     }
 
+    pub async fn recieve_audit_event(audit_event: AuditEvent) -> Result<String, AuditError> {
+
+        
+        Ok(String::from("fungsi berhasil"))
+    }
+
     pub async fn delete_audit_record(cid: String) -> Result<String, AuditError> {
 
         Ok()
     }
+
+    // pub async fn 
 
 
 }

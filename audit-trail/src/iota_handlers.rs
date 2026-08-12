@@ -2,6 +2,7 @@
 pub struct Iota{}
 
 impl Iota {
+    
     pub async fn get_iota_client() -> Result<iota_client::Client, AuditError> {
         let iota_client = iota_client::Client::builder()
             .with_node(IOTA_URL)
@@ -13,6 +14,6 @@ impl Iota {
         Ok(iota_client)
     }
 
-    
+
 
 }

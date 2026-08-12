@@ -75,4 +75,8 @@ module ats::audit_proof {
     public fun get_creator(proof: &IntegrityProof): address {
         proof.creator
     }
+
+    //public fun vaidate_audit_record (): bool{
+    //
+    //}
 }
