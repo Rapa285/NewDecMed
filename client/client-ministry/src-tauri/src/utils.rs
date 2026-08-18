@@ -393,6 +393,39 @@ where
     Ok(ori_val)
 }
 
+pub async fn do_http_post_request_json<P, T, E>(
+    access_token: Option<String>,
+    endpoint: &str,
+    payload: &P,
+    req_client: &Client,
+    success_status_code: StatusCode,
+) -> Result<T, ClientError>
+where
+    P: Serialize,
+    E: DeserializeOwned + Debug,
+    T: DeserializeOwned,
+{
+    let mut res = req_client.post(endpoint).json(payload);
+    if access_token.is_some() {
+        res = res.bearer_auth(access_token.unwrap());
+    }
+    let res = res.send().await.context(current_fn!())?;
+
+    let res_status = res.status();
+    let res_body = res.bytes().await.context(current_fn!())?;
+
+    if res_status != success_status_code {
+        let error: E = serde_json::from_slice(&res_body.to_vec()).context(current_fn!())?;
+        return Err(ClientError::Anyhow(
+            anyhow!(format!("{:#?}", error)).context(current_fn!()),
+        ));
+    }
+
+    let res_body: T = serde_json::from_slice(&res_body.to_vec()).context(current_fn!())?;
+
+    Ok(res_body)
+}
+
 pub async fn _do_http_get_request_text<T, E, U>(
     access_token: Option<String>,
     req_client: &Client,

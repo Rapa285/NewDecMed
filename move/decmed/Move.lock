@@ -50,3 +50,9 @@ chain-id = "8f9fee67"
 original-published-id = "0xa5b53b6811fc8b532321f7d6ef2f02ae898d1b9d1d7705886423911ea5611c6e"
 latest-published-id = "0xa5b53b6811fc8b532321f7d6ef2f02ae898d1b9d1d7705886423911ea5611c6e"
 published-version = "1"
+
+[env.local-vps]
+chain-id = "8f9fee67"
+original-published-id = "0x0287afaf6946d3aaa0d926bc3e9f75423c0c53fd0516532385076d83051bd1b1"
+latest-published-id = "0x0287afaf6946d3aaa0d926bc3e9f75423c0c53fd0516532385076d83051bd1b1"
+published-version = "1"

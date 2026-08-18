@@ -5,3 +5,7 @@ pub const GAS_BUDGET: u64 = 50_000_000;
 pub const _HASH_SALT: &str = "169224A2BE2B267684F93A9CE38080D359BD774741FD3AE738D09B657A1A8104";
 pub const IPFS_BASE_URL: &str = "http://103.107.4.68:9094";
 pub const IPFS_GATEWAY_BASE_URL: &str = "http://103.107.4.68:8080";
+
+pub const LOG_ROTATION_INTERVAL_SECS: u64 = 60;
+pub const LOG_DIR: &str = "./logs";
+pub const LOG_FILE_PATH: &str = "./logs/audit_logs.log";

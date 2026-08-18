@@ -5,6 +5,7 @@ use umbral_pre::encrypt;
 use uuid::Uuid;
 
 use crate::{
+    constants::ATS_BASE_URL,
     client_error::ClientError,
     current_fn,
     types::{
@@ -15,7 +16,7 @@ use crate::{
         argon_hash, decode_hospital_personnel_id, generate_64_bytes_seed,
         get_global_admin_iota_address_from_keys_entry,
         get_global_admin_iota_key_pair_from_keys_entry, get_global_admin_pre_keys_from_keys_entry,
-        parse_keys_entry, serde_serialize_to_base64,
+        parse_keys_entry, serde_serialize_to_base64, do_http_post_request_json,
     },
 };
 
@@ -73,13 +74,42 @@ pub async fn create_activation_key(
             STANDARD.encode(argon_hash(compound_activation_key).context(current_fn!())?),
             argon_hash(hospital_admin_id.to_string()).context(current_fn!())?,
             serde_serialize_to_base64(&hospital_admin_metadata_enc).context(current_fn!())?,
-            argon_hash(payload.hospital_id).context(current_fn!())?,
-            payload.hospital_name,
+            argon_hash(payload.hospital_id.clone()).context(current_fn!())?,
+            payload.hospital_name.clone(),
             admin_iota_address,
             admin_iota_key_pair,
         )
         .await
         .context(current_fn!())?;
+    
+    let hospital_id_clone = payload.hospital_id;
+    let hospital_admin_cid_clone = hospital_admin_cid;
+    let hospital_name_clone = payload.hospital_name;
+    let req_client = reqwest::Client::new();
+
+    tokio::spawn(async move {
+        let audit_payload = serde_json::json!({
+            "source_component": "TauriBackend",
+            "actor_id": "GlobalAdmin",
+            "target_object": hospital_id_clone,
+            "outcome": "Success",
+            "event_type": "EV6",
+            "action_type": "CreateActivationKey",
+
+            "facility_id": hospital_id_clone,
+            "facility_name": hospital_name_clone,
+            "administrator_id": hospital_admin_cid_clone,
+            "transaction_digest": "digest_placeholder",
+        });
+
+        let _ = do_http_post_request_json::<_, serde_json::Value, serde_json::Value>(
+            None,
+            &format!("{}/events", ATS_BASE_URL),
+            &audit_payload,
+            &req_client,
+            reqwest::StatusCode::CREATED, 
+        ).await;
+    });
 
     Ok(SuccessResponse {
         data: (),
