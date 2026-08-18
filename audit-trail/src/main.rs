@@ -97,6 +97,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // registry.register("web-app-01", &env::var("WEB_APP_PUBKEY")?, None)?;
     let verifier = Arc::new(Mutex::new(EventVerifier::new(registry)));
 
+
+    let initial_pk = engine_ref.initial_public_key().to_string();
+    let lt_pk      = engine_ref.long_term_public_key().to_string();
+    let source_ids: Vec<String> = registry
+        .all()
+        .iter()
+        .map(|s| s.source_id.clone())
+        .collect();
+    let iota_node_url = env::var("IOTA_URL")
+        .unwrap_or_else(|_| "https://api.testnet.shimmer.network".to_string());
+
+    // Spawn rotation worker — sekarang dengan parameter LAVA + IOTA
+    Utils::spawn_log_rotation_worker(
+        initial_pk,
+        lt_pk,
+        LavaParamsMeta { a: params.a, b: params.b, c: params.c, d: params.d, e: params.e },
+        source_ids,
+        iota_node_url,
+    );
+
     // ── Setup Handlers ────────────────────────────────────────────────────
     let app_handlers = Arc::new(Handlers {
         event_queue: tx,
@@ -107,7 +127,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Utils::spawn_log_writer_worker(rx, Arc::clone(&engine));  // ← tambah engine
     Utils::spawn_lava_file_writer(lava_rx, params.b);         // ← worker baru
     Utils::spawn_metronome(Arc::clone(&engine), params.d);    // ← worker baru
-    Utils::spawn_log_rotation_worker();                        // tidak berubah
 
     // ── Router — tidak berubah ────────────────────────────────────────────
     let app = Router::new()

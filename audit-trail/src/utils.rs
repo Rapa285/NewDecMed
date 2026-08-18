@@ -212,36 +212,107 @@ impl Utils {
         }
     }
 
-    /// WORKER 2: Rotasi dan Upload ke IPFS
-    pub fn spawn_log_rotation_worker() {
+    /// WORKER 2: Rotasi, Upload IPFS, dan Publish ke IOTA
+    pub fn spawn_log_rotation_worker(
+        initial_pk: String,          // ← dari LavaEngine::initial_public_key()
+        lt_pk: String,               // ← dari LavaEngine::long_term_public_key()
+        lava_params: LavaParamsMeta, // ← dari LavaParams yang dipakai
+        source_ids: Vec<String>,     // ← dari SourceRegistry::all()
+        iota_node_url: String,       // ← dari env var IOTA_NODE_URL
+    ) {
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(LOG_ROTATION_INTERVAL_SECS));
+            let mut interval = tokio::time::interval(
+                Duration::from_secs(LOG_ROTATION_INTERVAL_SECS)
+            );
+            let iota_client = IotaLogClient::new(iota_node_url);
+            let mut sequence_number: u64 = 0;
+            let mut prev_block_id: Option<String> = None;
 
             loop {
                 interval.tick().await;
 
                 if let Ok(metadata) = fs::metadata(LOG_FILE_PATH).await {
-                    if metadata.len() > 0 {
-                        let timestamp = Utc::now().timestamp();
-                        let temp_file_path = format!("{}/uploading_{}.log", LOG_DIR, timestamp);
-
-                        match fs::rename(LOG_FILE_PATH, &temp_file_path).await {
-                            Ok(_) => {
-                                println!("Menyiapkan log untuk di-upload: {}", temp_file_path);
-
-                                match Self::add_file_to_ipfs(&temp_file_path).await {
-                                    Ok(cid) => {
-                                        println!("Berhasil upload ke IPFS. CID: {}", cid);
-                                        if let Err(e) = fs::remove_file(&temp_file_path).await {
-                                            eprintln!("Gagal menghapus file lokal: {}", e);
-                                        }
-                                    }
-                                    Err(e) => eprintln!("Gagal upload ke IPFS: {:?}", e),
-                                }
-                            }
-                            Err(e) => eprintln!("Gagal merename file log: {}", e),
-                        }
+                    if metadata.len() == 0 {
+                        continue; // file kosong, skip
                     }
+                } else {
+                    continue;
+                }
+
+                let timestamp = Utc::now();
+                let temp_file_path = format!(
+                    "{}/uploading_{}.log",
+                    LOG_DIR,
+                    timestamp.timestamp()
+                );
+
+                // ── 1. Rename file (atomic) ───────────────────────────────────
+                if let Err(e) = fs::rename(LOG_FILE_PATH, &temp_file_path).await {
+                    eprintln!("[rotation] gagal rename file log: {e}");
+                    continue;
+                }
+                println!("[rotation] log dirotasi: {temp_file_path}");
+
+                // ── 2. Hitung hash file SEBELUM upload ────────────────────────
+                // Ini yang menutup window of vulnerability secara partial:
+                // hash tercatat sebelum file dikirim ke mana pun
+                let file_hash = match IotaLogClient::hash_file(&temp_file_path).await {
+                    Ok(h) => h,
+                    Err(e) => {
+                        eprintln!("[rotation] gagal hash file: {e}");
+                        "unknown".to_string()
+                    }
+                };
+
+                // ── 3. Upload ke IPFS ─────────────────────────────────────────
+                let cid = match Self::add_file_to_ipfs(&temp_file_path).await {
+                    Ok(cid) => {
+                        println!("[rotation] upload IPFS berhasil. CID: {cid}");
+                        cid
+                    }
+                    Err(e) => {
+                        eprintln!("[rotation] gagal upload IPFS: {e:?}");
+                        // Tetap lanjut kirim ke IOTA meski IPFS gagal
+                        // agar hash file tetap tercatat
+                        "ipfs_upload_failed".to_string()
+                    }
+                };
+
+                // ── 4. Publish metadata ke IOTA ───────────────────────────────
+                sequence_number += 1;
+                let iota_metadata = IotaLogMetadata {
+                    version: "1.0",
+                    log_sequence_number: sequence_number,
+                    rotation_timestamp: timestamp,
+                    entry_count: 0, // opsional: bisa di-track di engine
+                    lava_params: LavaParamsMeta {
+                        a: lava_params.a,
+                        b: lava_params.b,
+                        c: lava_params.c,
+                        d: lava_params.d,
+                        e: lava_params.e,
+                    },
+                    initial_public_key: initial_pk.clone(),
+                    long_term_public_key: lt_pk.clone(),
+                    ipfs_cid: cid,
+                    file_hash,
+                    source_ids: source_ids.clone(),
+                    prev_iota_block_id: prev_block_id.clone(),
+                };
+
+                match iota_client.publish_metadata(&iota_metadata).await {
+                    Ok(block_id) => {
+                        println!("[rotation] metadata tersimpan di IOTA. Block ID: {block_id}");
+                        prev_block_id = Some(block_id); // simpan untuk file berikutnya
+                    }
+                    Err(e) => {
+                        eprintln!("[rotation] gagal publish ke IOTA: {e:?}");
+                    }
+                }
+
+                // ── 5. Hapus file lokal setelah semua berhasil ────────────────
+                if let Err(e) = fs::remove_file(&temp_file_path).await {
+                    eprintln!("[rotation] gagal hapus file temp: {e}");
                 }
             }
         });
