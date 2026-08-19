@@ -1,20 +1,4 @@
-// iota_client.rs
-// Menyimpan metadata log ke IOTA Rebased menggunakan
-// IOTA Notarization Toolkit (Single Notarization — Locked method).
-//
-// Setiap file log rotation menghasilkan satu Notarized Object on-chain:
-//   - Immutable setelah dibuat (Locked Notarization)
-//   - Verifiable oleh siapapun via Object ID
-//   - Berisi: CID IPFS, public keys LAVA, params, file hash, dll
-//
-// Referensi: https://docs.iota.org/developer/iota-notarization
 
-use notarization::{
-    NotarizationClient,
-    NotarizationClientReadOnly,
-    builder::LockedNotarizationBuilder,
-    types::TimeLock,
-};
 use iota_sdk::{
     IotaClientBuilder,
     types::crypto::IotaKeyPair,
@@ -44,10 +28,7 @@ pub struct IotaLogMetadata {
 // ── Hasil publish ─────────────────────────────────────────────────────────────
 
 pub struct PublishResult {
-    /// Object ID on-chain — ini yang disimpan sebagai referensi
-    /// dan digunakan verifier untuk fetch metadata dari IOTA
     pub object_id: String,
-    /// Transaction digest — bukti tambahan transaksi berhasil
     pub tx_digest: String,
 }
 
@@ -55,15 +36,10 @@ pub struct PublishResult {
 
 pub struct IotaLogClient {
     node_url: String,
-    /// Private key ATS untuk signing transaksi ke IOTA
-    /// Dalam produksi: load dari env var / secret manager, bukan hardcode
     key_pair: IotaKeyPair,
 }
 
 impl IotaLogClient {
-    /// Buat client baru.
-    /// `key_pair_bech32` adalah private key dalam format bech32
-    /// (format default IOTA CLI: `iota keytool export`)
     pub fn new(node_url: String, key_pair_bech32: String) -> Result<Self, AuditError> {
         let key_pair = IotaKeyPair::decode(&key_pair_bech32)
             .map_err(|e| AuditError::from(
@@ -72,12 +48,6 @@ impl IotaLogClient {
         Ok(Self { node_url, key_pair })
     }
 
-    /// Publish metadata sebagai Locked Notarization ke IOTA Rebased.
-    ///
-    /// Locked Notarization dipilih karena:
-    ///   - Data immutable setelah dibuat — tidak bisa diubah siapapun
-    ///   - Delete lock = jauh di masa depan (tahun 2099) → praktis permanent
-    ///   - Verifiable oleh siapapun hanya dengan Object ID
     pub async fn publish_metadata(
         &self,
         metadata: &IotaLogMetadata,
@@ -96,35 +66,19 @@ impl IotaLogClient {
                 anyhow::anyhow!("gagal connect ke IOTA node: {e}")
             ))?;
 
-        // ── 3. Bangun Notarization client dengan signer ───────────────────
-        let read_only = NotarizationClientReadOnly::new(iota_client)
-            .await
-            .map_err(|e| AuditError::from(
-                anyhow::anyhow!("gagal buat read-only client: {e}")
-            ))?;
-
-        let notarization_client = NotarizationClient::new(read_only, &self.key_pair)
-            .await
-            .map_err(|e| AuditError::from(
-                anyhow::anyhow!("gagal buat notarization client: {e}")
-            ))?;
-
-        // ── 4. Bangun Locked Notarization ─────────────────────────────────
-        // Delete lock = Unix timestamp tahun 2099 → praktis permanent
-        // Ini menjamin metadata tidak bisa dihapus selama sistem berjalan
-        let delete_lock_until: u32 = 4102444800; // 2099-12-31 UTC
+        let delete_lock_until: u32 = 4102444800;
 
         let result = notarization_client
-            .create_locked()                          // LockedNotarizationBuilder
-            .with_state(metadata_json.as_bytes())     // data yang dinotarisasi
-            .with_description(format!(               // deskripsi human-readable
+            .create_locked()                          
+            .with_state(metadata_json.as_bytes())     
+            .with_description(format!(               
                 "ATS Log #{} — {}",
                 metadata.log_sequence_number,
                 metadata.rotation_timestamp.format("%Y-%m-%dT%H:%M:%SZ")
             ))
             .with_delete_lock(TimeLock::UnlockAt(delete_lock_until))
-            .finish()                                 // → TransactionBuilder
-            .build_and_execute()                      // sign + submit ke network
+            .finish()                                 
+            .build_and_execute()                      
             .await
             .map_err(|e| AuditError::from(
                 anyhow::anyhow!("gagal publish ke IOTA: {e}")
@@ -150,9 +104,6 @@ impl IotaLogClient {
         Ok(PublishResult { object_id, tx_digest })
     }
 
-    /// Verifikasi metadata — fetch notarized object dari IOTA via Object ID
-    /// dan bandingkan dengan metadata yang diberikan.
-    /// Dipanggil oleh verifier saat audit.
     pub async fn verify_metadata(
         &self,
         object_id: &str,

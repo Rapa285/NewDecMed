@@ -18,7 +18,7 @@ use utils::Utils;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc; 
 use crate::{
-    constants::LOG_DIR,
+    constants::{LOG_DIR,IOTA_URL}
     types::AuditRecord,
     audit::AuditLogger,
 };
@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(audit_logger.run());
 
     // 4. Jalankan worker dari utils.rs
-    Utils::spawn_log_rotation_worker(); // Melakukan rotasi dan upload berkala
+    Utils::spawn_log_rotation_worker(IOTA_URL); // Melakukan rotasi dan upload berkala
 
     // 5. Setup Router Axum
     let app = Router::new()

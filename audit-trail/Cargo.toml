@@ -3,25 +3,16 @@ name = "audit-trail"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "ats"
-path = "src/main.rs"
-
 [dependencies]
 # --- Cryptography ---
 ring = "0.17"
 sha2 = "0.10"
-rand = "0.8"
-hex = "0.4"
-
-# --- mTLS (Mutual TLS) ---
-rustls = "0.21"
-rustls-pemfile = "1"
-tokio-rustls = "0.24"
+rand = "0.9"          # Diperbarui dari 0.8 mengikuti proxy
+hex = "0.4.3"         # Diperbarui dari 0.4 mengikuti proxy
 
 # --- Async & Runtime ---
-tokio = { version = "1.44.2", features = ["full"] }
-tokio-util = { version = "0.7.19", features = ["codec"] }
+tokio = { version = "=1.44.2", features = ["full"] }
+tokio-util = { version = "0.7.11", features = ["codec"] }
 
 # --- Web, HTTP & Database ---
 axum = "0.8.4"
@@ -34,17 +25,21 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # --- Error handling ---
-thiserror = "1"
-anyhow = "1"
+thiserror = "2.0"     # Diperbarui dari 1 mengikuti proxy
+anyhow = "1.0"        # Diperbarui dari 1 mengikuti proxy
 
 # --- Time & Utilities ---
-chrono = { version = "0.4.45", features = ["serde"] }
-uuid = { version = "1.24.0", features = ["serde", "v4", "v7"] }
+chrono = { version = "0.4.39", features = ["serde"] }       # Diperbarui dari 0.4.39 mengikuti proxy
+uuid = { version = "1", features = ["serde", "v4", "v7"] } # Versi disamakan ke 1, fitur v7 & serde dipertahankan
 dotenvy = "0.15.7"
 
 # --- IOTA ---
-notarization = { git = "https://github.com/iotaledger/notarization", package = "notarization" }
-iota-sdk = { git = "https://github.com/iotaledger/iota", package = "iota-sdk" }
+iota-sdk = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-sdk" }
+iota-keys = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-keys" }
+iota-config = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-config" }
+iota-types = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-types" }
+iota-json-rpc-types = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-json-rpc-types" }
+shared_crypto = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "shared-crypto" }
 
-[dev-dependenclies]
+[dev-dependencies]
 tempfile = "3"

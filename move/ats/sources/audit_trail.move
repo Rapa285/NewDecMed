@@ -1,82 +1,45 @@
-module ats::audit_proof {
-    use std::string::String;
-    use iota::object::{Self, UID};
-    use iota::transfer;
-    use iota::tx_context::{Self, TxContext};
-    use iota::event;
+module ats::audit_log;
 
-    // =================================================================
-    // 1. STRUCT (MODEL DATA)
-    // =================================================================
-    
-    /// Struct ini memiliki ability `key`, artinya ia adalah Object
-    /// mandiri yang akan hidup di dalam jaringan blockchain IOTA.
-    public struct IntegrityProof has key {
-        id: UID,                 // Wajib ada untuk object on-chain
-        audit_record_id: String, // UUID v7 dari database PostgreSQL Anda
-        ipfs_cid: String,        // CID dari file JSON di IPFS
-        creator: address,        // Alamat dompet pembuat log
-    }
+public struct AuditLogMetadata has key {
+    id: UID,
 
-    /// (Opsional tapi sangat direkomendasikan) 
-    /// Event yang dipancarkan saat bukti berhasil dibuat. 
-    /// Ini memudahkan PostgreSQL / Backend Anda menangkap notifikasi.
-    public struct ProofCreatedEvent has copy, drop {
-        proof_id: iota::object::ID,
-        audit_record_id: String,
-        ipfs_cid: String,
-    }
+    version: vector<u8>,
+    log_sequence_number: u64,
+    rotation_timestamp: u64,
 
-    // =================================================================
-    // 2. CREATOR FUNCTION
-    // =================================================================
+    ipfs_cid: vector<u8>,
+    file_hash: vector<u8>,
 
-    public fun create_proof(
-        audit_record_id: String,
-        ipfs_cid: String,
-        ctx: &mut TxContext
-    ) {
-        // Buat ID unik on-chain
-        let id = object::new(ctx);
-        let creator = tx_context::sender(ctx);
+    first_record_hash: vector<u8>,
+    final_record_hash: vector<u8>,
 
-        // Pancarkan event ke luar blockchain (ditangkap oleh backend)
-        event::emit(ProofCreatedEvent {
-            proof_id: object::uid_to_inner(&id),
-            audit_record_id,
-            ipfs_cid,
-        });
+    record_count: u64,
 
-        // Bentuk datanya
-        let proof = IntegrityProof {
-            id,
-            audit_record_id,
-            ipfs_cid,
-            creator,
-        };
+    prev_object_id: vector<u8>,
+}
 
-        // KUNCI PERMANEN (IMMUTABLE)! 
-        // Object ini tidak akan pernah bisa diubah (tidak ada setter).
-        transfer::freeze_object(proof);
-    }
-
-    // =================================================================
-    // 3. GETTER FUNCTIONS (Bisa dibaca publik)
-    // =================================================================
-
-    public fun get_audit_record_id(proof: &IntegrityProof): &String {
-        &proof.audit_record_id
-    }
-
-    public fun get_ipfs_cid(proof: &IntegrityProof): &String {
-        &proof.ipfs_cid
-    }
-
-    public fun get_creator(proof: &IntegrityProof): address {
-        proof.creator
-    }
-
-    //public fun vaidate_audit_record (): bool{
-    //
-    //}
+public entry fun create_audit_log(
+    version: vector<u8>,
+    log_sequence_number: u64,
+    rotation_timestamp: u64,
+    ipfs_cid: vector<u8>,
+    file_hash: vector<u8>,
+    first_record_hash: vector<u8>,
+    final_record_hash: vector<u8>,
+    record_count: u64,
+    prev_object_id: vector<u8>,
+    ctx: &mut TxContext,
+) {
+    transfer::share_object(AuditLogMetadata {
+        id: object::new(ctx),
+        version,
+        log_sequence_number,
+        rotation_timestamp,
+        ipfs_cid,
+        file_hash,
+        first_record_hash,
+        final_record_hash,
+        record_count,
+        prev_object_id,
+    });
 }
