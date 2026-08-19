@@ -81,135 +81,39 @@ impl Utils {
         Ok(cid)
     }
 
-    /// WORKER 1A: Penulis Log — sekarang melalui LAVA engine
-    ///
-    /// Sebelumnya: rx → serialize → tulis file
-    /// Sekarang  : rx → LavaEngine::process_event() → LogItem ke lava_tx
-    ///
-    /// File tidak lagi ditulis di sini — itu tugas Worker 1B (spawn_lava_file_writer)
-    pub fn spawn_log_writer_worker(
-        mut rx: Receiver<AuditRecord>,
-        engine: Arc<Mutex<LavaEngine>>,  // ← parameter baru
-    ) {
+    /// WORKER 1: Penulis Log (Menarik dari Queue)
+    pub fn spawn_log_writer_worker(mut rx: Receiver<AuditRecord>) {
         tokio::spawn(async move {
+            // Terus berjalan selama channel/queue belum ditutup
             while let Some(record) = rx.recv().await {
-                // Konversi AuditRecord → serde_json::Value untuk LAVA
-                // AuditRecord tetap utuh — LAVA membungkusnya sebagai payload
-                // di dalam LogEntry, hash chain dan signature diurus oleh engine
-                let payload = match serde_json::to_value(&record) {
-                    Ok(v) => v,
+                // 1. Serialisasi ke JSON
+                let mut log_line = match serde_json::to_string(&record) {
+                    Ok(json_str) => json_str + "\n",
                     Err(e) => {
-                        eprintln!("[lava-worker] gagal serialisasi record: {e}");
+                        eprintln!("Gagal serialisasi log: {}", e);
+                        continue; // Lewati event ini jika gagal
+                    }
+                };
+
+                // 2. Buka dan tulis ke file
+                let mut file = match OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(LOG_FILE_PATH)
+                    .await
+                {
+                    Ok(f) => f,
+                    Err(e) => {
+                        eprintln!("Gagal membuka file log: {}", e);
                         continue;
                     }
                 };
 
-                // Proses lewat LAVA engine
-                // Engine akan:
-                //   1. Advance hash chain
-                //   2. Buat LogEntry dengan hash baru
-                //   3. Kirim LogEntry (+ Authenticator / CredentialUpdate jika waktunya)
-                //      ke lava_tx yang sudah di-setup di main.rs
-                let mut eng = engine.lock().await;
-                if let Err(e) = eng.process_event(payload) {
-                    eprintln!("[lava-worker] engine error: {e}");
-                    // Jangan continue — record hilang lebih berbahaya dari log error
-                    // Pertimbangkan untuk crash / alert di produksi
-                }
-            }
-
-            eprintln!("[lava-worker] channel ditutup, worker berhenti");
-        });
-    }
-
-    /// WORKER 1B: LAVA File Writer
-    ///
-    /// Membaca LogItem dari lava_rx (output LAVA engine) dan
-    /// menulis ke file.log sebagai NDJSON, dengan batching b item per flush.
-    ///
-    /// Ini menggantikan logika file write yang sebelumnya ada di Worker 1A.
-    pub fn spawn_lava_file_writer(
-        mut lava_rx: UnboundedReceiver<LogItem>,
-        batch_size: u64,  // parameter b dari LavaParams
-    ) {
-        tokio::spawn(async move {
-            let mut buffer: Vec<String> = Vec::new();
-
-            while let Some(item) = lava_rx.recv().await {
-                // Serialize LogItem ke JSON
-                match serde_json::to_string(&item) {
-                    Ok(json_str) => buffer.push(json_str),
-                    Err(e) => {
-                        eprintln!("[lava-writer] gagal serialisasi LogItem: {e}");
-                        continue;
-                    }
-                }
-
-                // Flush ke file jika buffer sudah penuh (parameter b)
-                if buffer.len() as u64 >= batch_size {
-                    Self::flush_buffer(&mut buffer).await;
-                }
-            }
-
-            // Channel ditutup — flush sisa buffer
-            if !buffer.is_empty() {
-                Self::flush_buffer(&mut buffer).await;
-            }
-
-            eprintln!("[lava-writer] lava channel ditutup, writer berhenti");
-        });
-    }
-
-    /// WORKER 1C: Metronome Timer
-    ///
-    /// Inject dummy entry ke LAVA engine setiap d detik.
-    /// Mencegah truncation attack — verifier tahu harus ada
-    /// minimal 1 entry per interval d.
-    pub fn spawn_metronome(
-        engine: Arc<Mutex<LavaEngine>>,
-        interval_secs: u64,  // parameter d dari LavaParams
-    ) {
-        tokio::spawn(async move {
-            let mut ticker = tokio::time::interval(
-                tokio::time::Duration::from_secs(interval_secs)
-            );
-            ticker.tick().await; // skip tick pertama
-
-            loop {
-                ticker.tick().await;
-                let mut eng = engine.lock().await;
-                if let Err(e) = eng.inject_metronome() {
-                    eprintln!("[metronome] error: {e}");
+                if let Err(e) = file.write_all(log_line.as_bytes()).await {
+                    eprintln!("Gagal menulis ke file log: {}", e);
                 }
             }
         });
-    }
-
-    /// Helper: flush buffer ke file.log
-    async fn flush_buffer(buffer: &mut Vec<String>) {
-        let mut file = match OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(LOG_FILE_PATH)
-            .await
-        {
-            Ok(f) => f,
-            Err(e) => {
-                eprintln!("[lava-writer] gagal buka file log: {e}");
-                return;
-            }
-        };
-
-        for line in buffer.drain(..) {
-            let with_newline = line + "\n";
-            if let Err(e) = file.write_all(with_newline.as_bytes()).await {
-                eprintln!("[lava-writer] gagal tulis ke file: {e}");
-            }
-        }
-
-        if let Err(e) = file.flush().await {
-            eprintln!("[lava-writer] gagal flush file: {e}");
-        }
     }
 
     /// WORKER 2: Rotasi, Upload IPFS, dan Publish ke IOTA
@@ -364,28 +268,7 @@ impl Utils {
         Ok(hex::encode(hasher.finalize()))
     }
 
-    pub fn create_audit_record(
-        event: AuditEvent,
-        prev_record_hash: Option<String>,
-    ) -> Result<AuditRecord, serde_json::Error> {
-        let record_id = Uuid::now_v7();
-        let timestamp = Utc::now();
 
-        let record_hash = calculate_record_hash(
-            &record_id,
-            &timestamp,
-            prev_record_hash.as_deref(),
-            &event,
-        )?;
-
-        Ok(AuditRecord {
-            record_id,
-            timestamp,
-            prev_record_hash,
-            record_hash,
-            event,
-        })
-    }
 
     pub fn verify_record(record: &AuditRecord) -> Result<bool, serde_json::Error> {
         let calculated_hash = calculate_record_hash(

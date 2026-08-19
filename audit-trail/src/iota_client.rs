@@ -27,35 +27,18 @@ use crate::audit_error::AuditError;
 
 // ── Metadata struct ───────────────────────────────────────────────────────────
 
-/// Metadata yang disimpan sebagai Notarized Object di IOTA per file log.
-/// Ini adalah "jangkar kepercayaan" yang mengikat:
-///   - file.log di IPFS  (via ipfs_cid)
-///   - verifikasi LAVA   (via initial_public_key + lt_public_key)
-///   - parameter LAVA    (via lava_params)
-///   - urutan file       (via log_sequence_number + prev_object_id)
-#[derive(Debug, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IotaLogMetadata {
     pub version: String,
     pub log_sequence_number: u64,
     pub rotation_timestamp: DateTime<Utc>,
-    pub lava_params: LavaParamsMeta,
-    pub initial_public_key: String,
-    pub long_term_public_key: String,
     pub ipfs_cid: String,
     pub file_hash: String,
-    pub source_ids: Vec<String>,
-    /// Object ID dari notarized object file log sebelumnya.
-    /// Membentuk chain of custody on-chain.
+    pub first_record_hash: String,
+    pub final_record_hash: String,
+    pub record_count: u64,
     pub prev_object_id: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct LavaParamsMeta {
-    pub a: u64,
-    pub b: u64,
-    pub c: u64,
-    pub d: u64,
-    pub e: u64,
 }
 
 // ── Hasil publish ─────────────────────────────────────────────────────────────

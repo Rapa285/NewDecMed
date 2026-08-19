@@ -5,9 +5,7 @@ mod audit_error;
 mod macros;
 mod utils;
 mod iota_client;
-
-mod auth;
-mod lava;
+mod audit;
 
 use std::{env, sync::Arc};
 use axum::{
@@ -22,135 +20,46 @@ use tokio::sync::mpsc;
 use crate::{
     constants::LOG_DIR,
     types::AuditRecord,
-    auth::verifier::EventVerifier,
-    auth::registry::SourceRegistry,
-    lava::{engine::LavaEngine, types::{LavaParams, LogItem}},
-    iota_client::{LavaParamsMeta},
+    audit::AuditLogger,
 };
-
-// #[tokio::main]
-// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//     dotenvy::dotenv().ok();
-
-//     // 1. Pastikan folder log tersedia
-//     if let Err(e) = fs::create_dir_all(LOG_DIR).await {
-//         eprintln!("Peringatan: Gagal membuat folder log: {}", e);
-//     }
-
-//     // 2. Buat antrean mpsc (kapasitas 10.000 event)
-//     let (tx, rx) = mpsc::channel::<AuditRecord>(10000);
-
-//     // 3. Simpan Sender (tx) ke dalam State Handlers
-//     let app_handlers = Arc::new(Handlers {
-//         event_queue: tx,
-//     });
-
-//     // 4. Jalankan KEDUA worker dari utils.rs
-//     Utils::spawn_log_writer_worker(rx); // Membaca dari antrean dan menulis
-//     Utils::spawn_log_rotation_worker(); // Melakukan rotasi dan upload berkala
-
-//     // 5. Setup Router Axum
-//     let app = Router::new()
-//         .route("/api/events", post(Handlers::handle_event))
-//         .with_state(app_handlers);
-
-//     let port = env::var("PORT")?;
-
-//     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
-//         .await
-//         .unwrap();
-    
-//     println!("Service berjalan dan mendengarkan di port {}...", port);
-
-//     axum::serve(listener, app).await.unwrap();
-
-//     Ok(())
-
-// }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
-    fs::create_dir_all(LOG_DIR).await.ok();
 
-    // ── Channel 1: AuditRecord (event source → LAVA worker) ──────────────
-    // Tidak berubah dari sebelumnya
-    let (tx, rx) = mpsc::channel::<AuditRecord>(10_000);
+    // 1. Pastikan folder log tersedia
+    if let Err(e) = fs::create_dir_all(LOG_DIR).await {
+        eprintln!("Peringatan: Gagal membuat folder log: {}", e);
+    }
 
-    // ── Channel 2: LogItem (LAVA engine → file writer) ───────────────────
-    // UnboundedSender masuk ke LavaEngine, Receiver dibaca oleh file writer
-    let (lava_tx, lava_rx) = mpsc::unbounded_channel::<LogItem>();
+    // 2. Buat antrean mpsc (kapasitas 10.000 event)
+    let (tx, rx) = mpsc::channel::<AuditEvent>(10000);
 
-    // ── Setup LAVA engine ─────────────────────────────────────────────────
-    let params = LavaParams {
-        a: 5,   // authenticator setiap 5 entries
-        b: 10,  // flush ke file setiap 10 items
-        c: 50,  // rotate credential setiap 50 entries
-        d: 3600,  // metronome setiap 60 detik
-        e: 25,  // verification anchor setiap 25 entries
-    };
-    let engine = LavaEngine::new(params.clone(), lava_tx)?;
-
-    // Simpan kedua key ini → kirim ke IOTA (Anda yang handle)
-    let initial_pk = engine.initial_public_key().to_string();
-    let lt_pk      = engine.long_term_public_key().to_string();
-
-    let engine = Arc::new(Mutex::new(engine));
-
-    // ── Setup source registry ─────────────────────────────────────────────
-    // Load dari env / config — tambahkan semua source yang diizinkan
-    // let mut registry = SourceRegistry::new();
-    // Contoh — dalam produksi load dari config file atau env:
-    // registry.register("web-app-01", &env::var("WEB_APP_PUBKEY")?, None)?;
-    let source_ids: Vec<String> = SourceRegistry::all()
-        .iter()
-        .map(|s| s.source_id.clone())
-        .collect();
-
-    let verifier = Arc::new(Mutex::new(EventVerifier::new()));
-
-
-    
-    let iota_node_url = env::var("IOTA_URL")
-        .unwrap_or_else(|_| "https://api.testnet.shimmer.network".to_string());
-
-    let iota_key_pair = env::var("ATS_IOTA_KEY_PAIR")
-        .expect("ATS_IOTA_KEY_PAIR harus di-set di .env");
-
-    let iota_client = Arc::new(
-        IotaLogClient::new(iota_node_url, iota_key_pair)
-            .expect("gagal inisialisasi IOTA client")
-    );
-
-    // Spawn rotation worker — sekarang dengan parameter LAVA + IOTA
-    Utils::spawn_log_rotation_worker(
-        initial_pk,
-        lt_pk,
-        LavaParamsMeta { a: params.a, b: params.b, c: params.c, d: params.d, e: params.e },
-        source_ids,
-        iota_node_url,
-    );
-
-    // ── Setup Handlers ────────────────────────────────────────────────────
+    // 3. Simpan Sender (tx) ke dalam State Handlers
     let app_handlers = Arc::new(Handlers {
-        event_queue: tx,
-        verifier,
+        audit_tx: tx,
     });
+    let audit_logger = AuditLogger::new(rx);
+    tokio::spawn(audit_logger.run());
 
-    // ── Spawn workers ─────────────────────────────────────────────────────
-    Utils::spawn_log_writer_worker(rx, Arc::clone(&engine));  // ← tambah engine
-    Utils::spawn_lava_file_writer(lava_rx, params.b);         // ← worker baru
-    Utils::spawn_metronome(Arc::clone(&engine), params.d);    // ← worker baru
+    // 4. Jalankan worker dari utils.rs
+    Utils::spawn_log_rotation_worker(); // Melakukan rotasi dan upload berkala
 
-    // ── Router — tidak berubah ────────────────────────────────────────────
+    // 5. Setup Router Axum
     let app = Router::new()
         .route("/api/events", post(Handlers::handle_event))
         .with_state(app_handlers);
 
     let port = env::var("PORT")?;
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
-    println!("ATS listening on :{port}");
-    axum::serve(listener, app).await?;
+
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
+        .await
+        .unwrap();
+    
+    println!("Service berjalan dan mendengarkan di port {}...", port);
+
+    axum::serve(listener, app).await.unwrap();
 
     Ok(())
+
 }
