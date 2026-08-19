@@ -3,7 +3,6 @@ pub const GAS_STATION_BASE_URL: &str = "http://103.107.4.68:9528/v1";
 pub const GAS_BUDGET: u64 = 50_000_000;
 pub const HASH_SALT: &str = "169224A2BE2B267684F93A9CE38080D359BD774741FD3AE738D09B657A1A8104";
 
-pub const ATS_BASE_URL: &str = "http://localhost:3000/api";
 
 pub const DECMED_MODULE_HOSPITAL_PERSONNEL: &str = "hospital_personnel";
 
@@ -26,3 +25,9 @@ pub const DECMED_PATIENT_ID_ACCOUNT_OBJECT_VERSION: u64 = 5;
 
 pub const DECMED_GLOBAL_ADMIN_CAP_ID: &str =
     "0x9198ec000ee84e5acffc32dd33d3c4ed8e7b0a6f06859b5a9568b1dec53b5c28";
+
+// Informasi untuk ATS
+pub const ATS_BASE_URL: &str = "http://localhost:3000/api";
+
+pub const SOURCE_ID: &str = "decmed-tauri";
+pub const KEY_FILE_PATH: &str = "./ats_signing_key.pkcs8";

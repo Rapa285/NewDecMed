@@ -3,12 +3,14 @@ use crate::{
     constants::LOG_FILE_PATH,
     // types::{ExecuteTxResponse, ReserveGasResponse, SuccessResponse, UtilIpfsAddResponse},
     types::{AuditRecord, AuditEvent},
+    auth::{verifier::EventVerifier, types::SignedEvent},
 };
 use uuid::Uuid;
 
 use axum::{extract::State, Json, response::IntoResponse};
 use serde_json::json;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use chrono::Utc;
@@ -125,14 +127,28 @@ impl Handlers {
         // Cek: source terdaftar? nonce belum dipakai? signature valid?
         let audit_event = {
             let mut v = state.verifier.lock().await;
-            match v.verify_audit_event(&signed) {
-                Ok(event) => event,
+            match v.verify(&signed) {
+                Ok(json_value) => {
+                    match serde_json::from_value::<AuditEvent>(json_value) {
+                        Ok(parsed_event) => parsed_event, // Sukses! ini akan mengisi variabel audit_event
+                        Err(e) => {
+                            // Gagal konversi: payload tidak cocok dengan field di AuditEvent
+                            eprintln!("[auth] payload gagal diparsing: {}", e);
+                            let error_response: Json<serde_json::Value> = Json(json!({ 
+                                "status": "error", 
+                                "reason": format!("Format payload tidak valid: {}", e)
+                            }));
+                            return (StatusCode::BAD_REQUEST, error_response).into_response();
+                        }
+                    }
+                },
                 Err(e) => {
                     eprintln!("[auth] ditolak dari '{}': {}", signed.source_id, e);
-                    return (
-                        StatusCode::UNAUTHORIZED,
-                        Json(json!({ "status": "error", "reason": e.to_string() }))
-                    ).into_response();
+                    let error_response: Json<serde_json::Value> = Json(json!({ 
+                        "status": "error", 
+                        "reason": e.to_string() 
+                    }));
+                    return (StatusCode::UNAUTHORIZED, error_response).into_response();
                 }
             }
         };

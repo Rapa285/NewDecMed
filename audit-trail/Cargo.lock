@@ -178,7 +178,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "sqlx",
- "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "tokio-rustls 0.24.1",

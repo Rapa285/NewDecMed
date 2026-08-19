@@ -123,14 +123,6 @@ pub enum AuditEventDetails {
     },
 
     #[serde(rename = "EV5")]
-    ActivationKeyIssuance {
-        activation_key_id: String,
-        issuer_id: String,
-        recipient_id: String,
-        expiration_time: DateTime<Utc>,
-    },
-
-    #[serde(rename = "EV6")]
     FacilityRegistration {
         facility_id: String,
         facility_name: String,
@@ -138,7 +130,7 @@ pub enum AuditEventDetails {
         transaction_digest: String,
     },
 
-    #[serde(rename = "EV7")]
+    #[serde(rename = "EV6")]
     PRERequest {
         endpoint_called: String,
         request_id: String,
@@ -146,7 +138,7 @@ pub enum AuditEventDetails {
         channel_encryption: String,
     },
 
-    #[serde(rename = "EV8")]
+    #[serde(rename = "EV7")]
     Reencryption {
         reencryption_operation_id: String,
         capability_id: String,
@@ -154,77 +146,77 @@ pub enum AuditEventDetails {
         kfrag_identifier: String,
     },
 
-    #[serde(rename = "EV9")]
+    #[serde(rename = "EV8")]
     IotaTransaction {
         transaction_digest: String,
         payload_hash: String,
         network_confirmation_status: String, // Atau enum Confirmed/Pending
     },
 
-    #[serde(rename = "EV10")]
+    #[serde(rename = "EV9")]
     SponsorshipRequest {
         requested_gas_budget: u64,
         requester_id: String,
         transaction_digest: String,
     },
 
-    #[serde(rename = "EV11")]
+    #[serde(rename = "EV10")]
     SponsorshipDecision {
         approval_status: String, // Atau bool (true/false)
         decision_reason: String,
         approved_by: String,
     },
 
-    #[serde(rename = "EV12")]
+    #[serde(rename = "EV11")]
     KeyManagement {
         key_operation: String, // Create, Update, Delete
         key_id: String,
         key_type: String,
     },
 
-    #[serde(rename = "EV13")]
+    #[serde(rename = "EV12")]
     KeyAccess {
         key_id: String,
         key_type: String,
         access_purpose: String,
     },
 
-    #[serde(rename = "EV14")]
+    #[serde(rename = "EV13")]
     RedisWrite {
         redis_key_type: String,
         operation_type: String,
         ttl_remaining: i64, // Dalam detik/milidetik
     },
 
-    #[serde(rename = "EV15")]
+    #[serde(rename = "EV14")]
     RedisRead {
         redis_key_type: String,
         request_origin: String,
         ttl_remaining: i64,
     },
 
-    #[serde(rename = "EV16")]
+    #[serde(rename = "EV15")]
     IPFSOperation {
         cid: String,
         operation_type: String, // Upload/Download
         data_size: u64, // Dalam bytes
     },
 
-    #[serde(rename = "EV17")]
+    #[serde(rename = "EV16")]
     IPFSVerification {
         cid: String,
         expected_hash: String,
         verification_result: bool,
     },
 
-    #[serde(rename = "EV18")]
+    #[serde(rename = "EV17")]
     LedgerQuery {
         metadata_type: String,
         object_id: String,
         query_requester_id: String,
     },
 
-    #[serde(rename = "EV19")]
+    #[serde(rename = "EV18")]
     CapabilityValidation {
         capability_checked: String,
         required_scope: String,

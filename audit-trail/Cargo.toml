@@ -3,10 +3,6 @@ name = "audit-trail"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-name = "lava_ats"
-path = "src/lib.rs"
-
 [[bin]]
 name = "ats"
 path = "src/main.rs"
@@ -45,7 +41,10 @@ anyhow = "1"
 chrono = { version = "0.4.45", features = ["serde"] }
 uuid = { version = "1.24.0", features = ["serde", "v4", "v7"] }
 dotenvy = "0.15.7"
-iota-sdk = { version = "1.1.5", features = ["client", "tls"] }
 
-[dev-dependencies]
+# --- IOTA ---
+notarization = { git = "https://github.com/iotaledger/notarization", package = "notarization" }
+iota-sdk = { git = "https://github.com/iotaledger/iota", package = "iota-sdk" }
+
+[dev-dependenclies]
 tempfile = "3"

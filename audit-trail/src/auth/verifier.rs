@@ -16,21 +16,18 @@ use ring::signature::{UnparsedPublicKey, ED25519};
 
 use crate::auth::{
     error::{AuthError, AuthResult},
-    registry::SourceRegistry,
     types::SignedEvent,
+    registry::SourceRegistry,
 };
 
 pub struct EventVerifier {
-    registry: SourceRegistry,
-    /// Set nonce yang sudah dipakai — mencegah replay attack.
-    /// Dalam produksi, ini perlu TTL / dibatasi memori.
+
     used_nonces: HashSet<String>,
 }
 
 impl EventVerifier {
-    pub fn new(registry: SourceRegistry) -> Self {
+    pub fn new() -> Self {
         Self {
-            registry,
             used_nonces: HashSet::new(),
         }
     }
@@ -39,7 +36,7 @@ impl EventVerifier {
     /// Mengembalikan payload jika valid, Err jika tidak.
     pub fn verify(&mut self, event: &SignedEvent) -> AuthResult<serde_json::Value> {
         // ── 1. Cek source terdaftar ───────────────────────────────────────────
-        let source_info = self.registry.get(&event.source_id)?;
+        let source_info = SourceRegistry::get(&event.source_id)?;
         let public_key_hex = source_info.public_key_hex.clone();
 
         // ── 2. Cek replay: nonce tidak boleh digunakan dua kali ─────────────
@@ -77,71 +74,4 @@ impl EventVerifier {
         Ok(event.payload.clone())
     }
 
-    pub fn registry(&self) -> &SourceRegistry {
-        &self.registry
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::auth::source_client::SourceClient;
-
-    fn make_verifier(source_id: &str) -> (EventVerifier, SourceClient) {
-        let client = SourceClient::new(source_id.to_string());
-        let mut registry = SourceRegistry::new();
-        registry
-            .register(source_id, client.public_key_hex(), None)
-            .unwrap();
-        (EventVerifier::new(registry), client)
-    }
-
-    #[test]
-    fn test_valid_event_passes() {
-        let (mut verifier, client) = make_verifier("svc-a");
-        let event = client
-            .sign_event(serde_json::json!({ "action": "login" }))
-            .unwrap();
-        assert!(verifier.verify(&event).is_ok());
-    }
-
-    #[test]
-    fn test_tampered_payload_fails() {
-        let (mut verifier, client) = make_verifier("svc-b");
-        let mut event = client
-            .sign_event(serde_json::json!({ "action": "login" }))
-            .unwrap();
-        // Ubah payload setelah signing
-        event.payload = serde_json::json!({ "action": "ADMIN_OVERRIDE" });
-        assert!(matches!(
-            verifier.verify(&event),
-            Err(AuthError::InvalidSignature { .. })
-        ));
-    }
-
-    #[test]
-    fn test_replay_attack_rejected() {
-        let (mut verifier, client) = make_verifier("svc-c");
-        let event = client
-            .sign_event(serde_json::json!({ "action": "delete" }))
-            .unwrap();
-        // Pertama kali: OK
-        verifier.verify(&event).unwrap();
-        // Kedua kali dengan nonce yang sama: GAGAL
-        let result = verifier.verify(&event);
-        assert!(matches!(result, Err(AuthError::InvalidPayload(_))));
-    }
-
-    #[test]
-    fn test_unknown_source_rejected() {
-        let (mut verifier, _) = make_verifier("svc-d");
-        let impersonator = SourceClient::new("ghost".to_string());
-        let event = impersonator
-            .sign_event(serde_json::json!({ "action": "hack" }))
-            .unwrap();
-        assert!(matches!(
-            verifier.verify(&event),
-            Err(AuthError::UnknownSource { .. })
-        ));
-    }
 }

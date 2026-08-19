@@ -87,6 +87,7 @@ pub async fn create_activation_key(
     let hospital_name_clone = payload.hospital_name;
     let req_client = reqwest::Client::new();
 
+    // Audit Event
     tokio::spawn(async move {
         let audit_payload = serde_json::json!({
             "source_component": "TauriBackend",

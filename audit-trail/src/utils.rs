@@ -7,20 +7,20 @@ use tokio::fs::{self, OpenOptions};
 use tokio::io::AsyncWriteExt;
 use tokio::time::Duration;
 use tokio::sync::mpsc::Receiver;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use chrono::Utc;
 use anyhow::Context;
 use crate::constants::IPFS_BASE_URL;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{
     constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR}, 
     audit_error::AuditError,
     types::{AuditRecord, UtilIpfsAddResponse},
     current_fn,
-};
-
-use lava_ats::lava::{
-    engine::LavaEngine,
-    types::LogItem,
+    lava::{engine::LavaEngine, types::{LavaParams, LogItem}},
+    iota_client::{IotaLogClient, IotaLogMetadata, LavaParamsMeta},
 };
 
 pub struct Utils {}
@@ -278,32 +278,28 @@ impl Utils {
                     }
                 };
 
-                // ── 4. Publish metadata ke IOTA ───────────────────────────────
-                sequence_number += 1;
+                // ── 4. Publish ke IOTA ────────────────────────────────────────────
                 let iota_metadata = IotaLogMetadata {
-                    version: "1.0",
+                    version: "1.0".to_string(),
                     log_sequence_number: sequence_number,
                     rotation_timestamp: timestamp,
-                    entry_count: 0, // opsional: bisa di-track di engine
-                    lava_params: LavaParamsMeta {
-                        a: lava_params.a,
-                        b: lava_params.b,
-                        c: lava_params.c,
-                        d: lava_params.d,
-                        e: lava_params.e,
-                    },
+                    lava_params: lava_params.clone(),
                     initial_public_key: initial_pk.clone(),
                     long_term_public_key: lt_pk.clone(),
                     ipfs_cid: cid,
                     file_hash,
                     source_ids: source_ids.clone(),
-                    prev_iota_block_id: prev_block_id.clone(),
+                    prev_object_id: prev_object_id.clone(),
                 };
 
                 match iota_client.publish_metadata(&iota_metadata).await {
-                    Ok(block_id) => {
-                        println!("[rotation] metadata tersimpan di IOTA. Block ID: {block_id}");
-                        prev_block_id = Some(block_id); // simpan untuk file berikutnya
+                    Ok(result) => {
+                        println!(
+                            "[rotation] IOTA OK — Object ID: {} | TX: {}",
+                            result.object_id, result.tx_digest
+                        );
+                        // Simpan object_id untuk file log berikutnya (chain of custody)
+                        prev_object_id = Some(result.object_id);
                     }
                     Err(e) => {
                         eprintln!("[rotation] gagal publish ke IOTA: {e:?}");

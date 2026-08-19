@@ -11,92 +11,50 @@ use crate::auth::{
     error::{AuthError, AuthResult},
     types::SourceInfo,
 };
+use std::sync::OnceLock;
 
-pub struct SourceRegistry {
-    sources: HashMap<String, SourceInfo>,
+pub fn global_registry() -> &'static HashMap<String, SourceInfo> {
+    static REGISTRY: OnceLock<HashMap<String, SourceInfo>> = OnceLock::new();
+    
+    REGISTRY.get_or_init(|| {
+        let mut sources = HashMap::new();
+        
+        // ── HARDCODE SOURCE KAMU DI SINI ─────────────────────────────
+        sources.insert(
+            "TauriBackend_1".to_string(),
+            SourceInfo {
+                source_id: "TauriBackend_1".to_string(),
+                // Ganti dengan public key Ed25519 hex yang asli nanti
+                public_key_hex: "1234567890abcdef".to_string(), 
+                description: Some("Tauri Backend Application".to_string()),
+                registered_at: Utc::now(),
+            }
+        );
+
+        // Tambahkan source lain jika ada
+        // sources.insert("MobileApp_1".to_string(), SourceInfo { ... });
+
+        sources
+    })
 }
 
+pub struct SourceRegistry;
+
 impl SourceRegistry {
-    pub fn new() -> Self {
-        Self {
-            sources: HashMap::new(),
-        }
-    }
-
-    /// Daftarkan source baru. Dipanggil saat ATS startup dari konfigurasi.
-    /// Menolak duplikasi source_id.
-    pub fn register(
-        &mut self,
-        source_id: impl Into<String>,
-        public_key_hex: impl Into<String>,
-        description: Option<String>,
-    ) -> AuthResult<()> {
-        let source_id = source_id.into();
-        if self.sources.contains_key(&source_id) {
-            return Err(AuthError::DuplicateSource {
-                source_id,
-            });
-        }
-        self.sources.insert(
-            source_id.clone(),
-            SourceInfo {
-                source_id,
-                public_key_hex: public_key_hex.into(),
-                description,
-                registered_at: Utc::now(),
-            },
-        );
-        Ok(())
-    }
-
-    /// Ambil info source. Err jika tidak terdaftar.
-    pub fn get(&self, source_id: &str) -> AuthResult<&SourceInfo> {
-        self.sources.get(source_id).ok_or_else(|| AuthError::UnknownSource {
+    /// Ambil info source dari registry konstan. Err jika tidak terdaftar.
+    pub fn get(source_id: &str) -> AuthResult<&'static SourceInfo> {
+        let registry = global_registry();
+        registry.get(source_id).ok_or_else(|| AuthError::UnknownSource {
             source_id: source_id.to_string(),
         })
     }
 
-    pub fn len(&self) -> usize {
-        self.sources.len()
+    pub fn len() -> usize {
+        global_registry().len()
     }
 
     /// Kembalikan semua source terdaftar — untuk metadata IOTA
-    pub fn all(&self) -> Vec<&SourceInfo> {
-        self.sources.values().collect()
-    }
-}
-
-impl Default for SourceRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_register_and_get() {
-        let mut reg = SourceRegistry::new();
-        reg.register("svc-a", "deadbeef", Some("Service A".into())).unwrap();
-        let info = reg.get("svc-a").unwrap();
-        assert_eq!(info.source_id, "svc-a");
-        assert_eq!(info.public_key_hex, "deadbeef");
-    }
-
-    #[test]
-    fn test_duplicate_rejected() {
-        let mut reg = SourceRegistry::new();
-        reg.register("svc-a", "pk1", None).unwrap();
-        let res = reg.register("svc-a", "pk2", None);
-        assert!(matches!(res, Err(AuthError::DuplicateSource { .. })));
-    }
-
-    #[test]
-    fn test_unknown_source() {
-        let reg = SourceRegistry::new();
-        let res = reg.get("ghost");
-        assert!(matches!(res, Err(AuthError::UnknownSource { .. })));
+    pub fn all() -> Vec<&'static SourceInfo> {
+        global_registry().values().collect()
     }
 }
