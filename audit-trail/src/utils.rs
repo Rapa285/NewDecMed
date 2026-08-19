@@ -9,19 +9,19 @@ use tokio::time::Duration;
 use tokio::sync::mpsc::Receiver;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use chrono::Utc;
-use anyhow::Context;
-use crate::constants::IPFS_BASE_URL;
+use anyhow::{anyhow, bail, Result, Context};
 use tokio::sync::mpsc::UnboundedReceiver;
+use sha2::{Sha256, Digest};
 
 use crate::{
-    constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR}, 
+    constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR, IPFS_BASE_URL}, 
     audit_error::AuditError,
-    types::{AuditRecord, UtilIpfsAddResponse, SignedAuditEvent},
+    types::{AuditRecord, UtilIpfsAddResponse, SignedEvent},
     current_fn,
-    lava::{engine::LavaEngine, types::{LavaParams, LogItem}},
     iota_client::{IotaLogClient, IotaLogMetadata, LavaParamsMeta},
 };
+use uuid::Uuid;
+use chrono::{DateTime, Utc};
 
 pub struct Utils {}
 
@@ -124,7 +124,7 @@ impl Utils {
             let mut interval = tokio::time::interval(
                 Duration::from_secs(LOG_ROTATION_INTERVAL_SECS)
             );
-            let iota_client = IotaLogClient::new(iota_node_url);
+            let iota_client = IotaLogClient::new(iota_node_url).expect("Gagal membuat IotaLogClient");
             let mut sequence_number: u64 = 0;
             let mut prev_block_id: Option<String> = None;
 
@@ -185,7 +185,10 @@ impl Utils {
                     rotation_timestamp: timestamp,
                     ipfs_cid: cid,
                     file_hash,
-                    prev_object_id: prev_object_id.clone(),
+                    prev_block_id: prev_block_id.clone(),
+                    final_record_hash: String::new(),
+                    first_record_hash: String::new(),
+                    record_count: 0,
                 };
 
                 match iota_client.publish_metadata(&iota_metadata).await {
@@ -210,7 +213,7 @@ impl Utils {
         });
     }
 
-    pub fn verify_and_extract_event(signed_payload: SignedAuditEvent) -> Result<AuditEvent> {
+    pub fn verify_and_extract_event(signed_payload: SignedEvent) -> Result<AuditEvent> {
         
         // 1. Decode Public Key dari Hex ke bentuk byte (32 byte)
         let pubkey_bytes = hex::decode(&signed_payload.public_key)
@@ -271,7 +274,7 @@ impl Utils {
 
 
     pub fn verify_record(record: &AuditRecord) -> Result<bool, serde_json::Error> {
-        let calculated_hash = calculate_record_hash(
+        let calculated_hash = Self::calculate_record_hash(
             &record.record_id,
             &record.timestamp,
             record.prev_record_hash.as_deref(),
@@ -281,64 +284,34 @@ impl Utils {
         Ok(calculated_hash == record.record_hash)
     }
 
-    pub fn verify_chain(
-        records: &[AuditRecord],
-    ) -> Result<bool, serde_json::Error> {
-        let mut expected_previous_hash: Option<String> = None;
+    // pub fn verify_chain(
+    //     records: &[AuditRecord],
+    // ) -> Result<bool, serde_json::Error> {
+    //     let mut expected_previous_hash: Option<String> = None;
 
-        for record in records {
-            // Periksa hubungan dengan record sebelumnya.
-            if record.prev_record_hash != expected_previous_hash {
-                return Ok(false);
-            }
+    //     for record in records {
+    //         // Periksa hubungan dengan record sebelumnya.
+    //         if record.prev_record_hash != expected_previous_hash {
+    //             return Ok(false);
+    //         }
 
-            // Hitung ulang hash record.
-            let calculated_hash = calculate_record_hash(
-                &record.record_id,
-                &record.timestamp,
-                record.prev_record_hash.as_deref(),
-                &record.event,
-            )?;
+    //         // Hitung ulang hash record.
+    //         let calculated_hash = calculate_record_hash(
+    //             &record.record_id,
+    //             &record.timestamp,
+    //             record.prev_record_hash.as_deref(),
+    //             &record.event,
+    //         )?;
 
-            // Periksa integritas record.
-            if calculated_hash != record.record_hash {
-                return Ok(false);
-            }
+    //         // Periksa integritas record.
+    //         if calculated_hash != record.record_hash {
+    //             return Ok(false);
+    //         }
 
-            expected_previous_hash = Some(record.record_hash.clone());
-        }
+    //         expected_previous_hash = Some(record.record_hash.clone());
+    //     }
 
-        Ok(true)
-    }
+    //     Ok(true)
+    // }
 
-    pub fn create_audit_batch(
-        records: &[AuditRecord],
-        file_hash: String,
-        ipfs_cid: String,
-    ) -> Option<AuditBatch> {
-        if records.is_empty() {
-            return None;
-        }
-
-        let first = records.first()?;
-        let last = records.last()?;
-
-        Some(AuditBatch {
-            batch_id: Uuid::new_v4(),
-
-            start_time: first.timestamp,
-            end_time: last.timestamp,
-
-            record_count: records.len() as u64,
-
-            first_record_id: first.record_id,
-            last_record_id: last.record_id,
-
-            first_record_hash: first.record_hash.clone(),
-            final_record_hash: last.record_hash.clone(),
-
-            file_hash,
-            ipfs_cid,
-        })
-    }
 }

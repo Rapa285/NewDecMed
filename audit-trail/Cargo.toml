@@ -39,7 +39,7 @@ iota-keys = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fd
 iota-config = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-config" }
 iota-types = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-types" }
 iota-json-rpc-types = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-json-rpc-types" }
-shared_crypto = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "shared-crypto" }
+shared-crypto = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "shared-crypto" }
 
 [dev-dependencies]
 tempfile = "3"

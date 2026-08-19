@@ -11,30 +11,6 @@ pub struct UtilIpfsAddResponse {
     pub size: u64,
 }
 
-
-// #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-// pub enum EventType {
-//     Authentication
-//     QrAccessDelegationValidation,
-//     CapabilityCreation,
-//     MedicalRecordAccess,
-//     ActivationKeyIssuance,
-//     HealthcareFacilityRegistration,
-//     PreServiceRequest,
-//     ReencryptionOperation,
-//     BlockchainTransactionSubmission,
-//     GasSponsorshipRequest,
-//     GasSponsorshipDecision,
-//     ClientKeyStoreOperation,
-//     ClientKeyStoreAccess,
-//     SensitiveCacheObjectOperation,
-//     SensitiveCacheObjectAccess,
-//     IpfsObjectAccess,
-//     IpfsObjectIntegrityVerification,
-//     OnchainMetadataAccess,
-//     CapabilityValidation,
-// }
-
 /// Representasi hasil dari pelaksanaan audit event
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum AuditOutcome {
@@ -55,11 +31,10 @@ impl SignedEvent {
     pub fn canonical_message(&self) -> Result<String, serde_json::Error> {
         let payload_str = serde_json::to_string(&self.payload)?;
         Ok(format!(
-            "{}|{}|{}|{}",
-            self.source_id,
-            self.timestamp.to_rfc3339(),
-            self.nonce,
+            "{}|{}|{}",
             payload_str,
+            self.signature,
+            self.public_key
         ))
     }
 }

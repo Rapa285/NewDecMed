@@ -9,3 +9,5 @@ pub const IPFS_GATEWAY_BASE_URL: &str = "http://103.107.4.68:8080";
 pub const LOG_ROTATION_INTERVAL_SECS: u64 = 60;
 pub const LOG_DIR: &str = "./logs";
 pub const LOG_FILE_PATH: &str = "./logs/audit_logs.log";
+
+pub const IOTA_KEY_PAIR: &str = "iotaprivkey1qp5wft4pg7rf8prm2ddd3y38zstknqjy7jmkp02gzf0lwsdzurycqt4v3d6";

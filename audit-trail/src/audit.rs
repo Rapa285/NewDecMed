@@ -1,6 +1,11 @@
 use std::path::PathBuf;
 use tokio::fs::OpenOptions;
 use tokio::io::{AsyncWriteExt, BufWriter};
+use chrono::Utc;
+use uuid::Uuid;
+use std::sync::mpsc::Receiver;
+use crate::types::{AuditEvent, AuditRecord};
+use crate::constants::LOG_FILE_PATH;
 
 struct AuditLogger {
     rx: Receiver<AuditEvent>,
