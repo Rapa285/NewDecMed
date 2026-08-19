@@ -25,9 +25,3 @@ pub const DECMED_PATIENT_ID_ACCOUNT_OBJECT_VERSION: u64 = 5;
 
 pub const DECMED_GLOBAL_ADMIN_CAP_ID: &str =
     "0x9198ec000ee84e5acffc32dd33d3c4ed8e7b0a6f06859b5a9568b1dec53b5c28";
-
-// Informasi untuk ATS
-pub const ATS_BASE_URL: &str = "http://localhost:3000/api";
-
-pub const SOURCE_ID: &str = "decmed-tauri";
-pub const KEY_FILE_PATH: &str = "./ats_signing_key.pkcs8";

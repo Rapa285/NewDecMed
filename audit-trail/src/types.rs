@@ -46,11 +46,9 @@ pub enum AuditOutcome {
 
 #[derive(Debug, Deserialize)]
 pub struct SignedEvent {
-    pub source_id: String,
     pub payload: AuditEvent,
-    pub timestamp: DateTime<Utc>,
-    pub nonce: String,           
-    pub signature: String, 
+    pub signature: String,
+    pub public_key: String,
 }
 
 impl SignedEvent {
@@ -65,6 +63,41 @@ impl SignedEvent {
         ))
     }
 }
+
+/// Satu file audit yang dikumpulkan selama rolling window.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditBatch {
+    /// ID unik batch.
+    pub batch_id: Uuid,
+
+    /// Waktu awal rolling window.
+    pub start_time: DateTime<Utc>,
+
+    /// Waktu akhir rolling window.
+    pub end_time: DateTime<Utc>,
+
+    /// Jumlah record dalam file.
+    pub record_count: u64,
+
+    /// ID record pertama.
+    pub first_record_id: Uuid,
+
+    /// ID record terakhir.
+    pub last_record_id: Uuid,
+
+    /// Hash record pertama.
+    pub first_record_hash: String,
+
+    /// Hash record terakhir / chain head.
+    pub final_record_hash: String,
+
+    /// Hash keseluruhan file audit.
+    pub file_hash: String,
+
+    /// CID file audit yang disimpan di IPFS.
+    pub ipfs_cid: String,
+}
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEvent {
@@ -83,6 +116,7 @@ pub struct AuditRecord {
     pub record_id: Uuid,
     pub timestamp: DateTime<Utc>,
     pub prev_record_hash: Option<String>,
+    pub record_hash: String,
     
     #[serde(flatten)] 
     pub event: AuditEvent,

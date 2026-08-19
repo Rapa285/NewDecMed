@@ -4,6 +4,7 @@ use crate::{
     // types::{ExecuteTxResponse, ReserveGasResponse, SuccessResponse, UtilIpfsAddResponse},
     types::{AuditRecord, AuditEvent},
     auth::{verifier::EventVerifier, types::SignedEvent},
+    utils::Utils
 };
 use uuid::Uuid;
 
@@ -125,33 +126,8 @@ impl Handlers {
 
         // ── Fase 2: verifikasi source ─────────────────────────────────────
         // Cek: source terdaftar? nonce belum dipakai? signature valid?
-        let audit_event = {
-            let mut v = state.verifier.lock().await;
-            match v.verify(&signed) {
-                Ok(json_value) => {
-                    match serde_json::from_value::<AuditEvent>(json_value) {
-                        Ok(parsed_event) => parsed_event, // Sukses! ini akan mengisi variabel audit_event
-                        Err(e) => {
-                            // Gagal konversi: payload tidak cocok dengan field di AuditEvent
-                            eprintln!("[auth] payload gagal diparsing: {}", e);
-                            let error_response: Json<serde_json::Value> = Json(json!({ 
-                                "status": "error", 
-                                "reason": format!("Format payload tidak valid: {}", e)
-                            }));
-                            return (StatusCode::BAD_REQUEST, error_response).into_response();
-                        }
-                    }
-                },
-                Err(e) => {
-                    eprintln!("[auth] ditolak dari '{}': {}", signed.source_id, e);
-                    let error_response: Json<serde_json::Value> = Json(json!({ 
-                        "status": "error", 
-                        "reason": e.to_string() 
-                    }));
-                    return (StatusCode::UNAUTHORIZED, error_response).into_response();
-                }
-            }
-        };
+        let audit_event = Utils::verify_and_extract_event(signed);
+
 
         // ── Buat AuditRecord — Uuid dan timestamp tetap seperti sebelumnya ─
         // prev_record_hash tidak lagi diisi di sini —

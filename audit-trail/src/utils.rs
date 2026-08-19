@@ -17,7 +17,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 use crate::{
     constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR}, 
     audit_error::AuditError,
-    types::{AuditRecord, UtilIpfsAddResponse},
+    types::{AuditRecord, UtilIpfsAddResponse, SignedAuditEvent},
     current_fn,
     lava::{engine::LavaEngine, types::{LavaParams, LogItem}},
     iota_client::{IotaLogClient, IotaLogMetadata, LavaParamsMeta},
@@ -214,10 +214,6 @@ impl Utils {
 
     /// WORKER 2: Rotasi, Upload IPFS, dan Publish ke IOTA
     pub fn spawn_log_rotation_worker(
-        initial_pk: String,          // ← dari LavaEngine::initial_public_key()
-        lt_pk: String,               // ← dari LavaEngine::long_term_public_key()
-        lava_params: LavaParamsMeta, // ← dari LavaParams yang dipakai
-        source_ids: Vec<String>,     // ← dari SourceRegistry::all()
         iota_node_url: String,       // ← dari env var IOTA_NODE_URL
     ) {
         tokio::spawn(async move {
@@ -283,12 +279,8 @@ impl Utils {
                     version: "1.0".to_string(),
                     log_sequence_number: sequence_number,
                     rotation_timestamp: timestamp,
-                    lava_params: lava_params.clone(),
-                    initial_public_key: initial_pk.clone(),
-                    long_term_public_key: lt_pk.clone(),
                     ipfs_cid: cid,
                     file_hash,
-                    source_ids: source_ids.clone(),
                     prev_object_id: prev_object_id.clone(),
                 };
 
@@ -314,5 +306,156 @@ impl Utils {
         });
     }
 
-    
+    pub fn verify_and_extract_event(signed_payload: SignedAuditEvent) -> Result<AuditEvent> {
+        
+        // 1. Decode Public Key dari Hex ke bentuk byte (32 byte)
+        let pubkey_bytes = hex::decode(&signed_payload.public_key)
+            .context("Format public key bukan hex yang valid")?;
+        
+        let pubkey_array: [u8; 32] = pubkey_bytes.try_into()
+            .map_err(|_| anyhow!("Ukuran public key salah (harus 32 byte)"))?;
+        
+        let verifying_key = VerifyingKey::from_bytes(&pubkey_array)
+            .context("Gagal memuat VerifyingKey dari byte yang diberikan")?;
+
+        // 2. Decode Signature dari Hex ke bentuk byte (64 byte)
+        let sig_bytes = hex::decode(&signed_payload.signature)
+            .context("Format signature bukan hex yang valid")?;
+        
+        let sig_array: [u8; 64] = sig_bytes.try_into()
+            .map_err(|_| anyhow!("Ukuran signature salah (harus 64 byte)"))?;
+        
+        let signature = Signature::from_bytes(&sig_array);
+
+        // 3. Serialize ulang data event ke bentuk bytes (JSON)
+        let payload_bytes = serde_json::to_vec(&signed_payload.event)
+            .context("Gagal melakukan serialize pada event payload")?;
+
+        // 4. Verifikasi signature terhadap payload bytes
+        if verifying_key.verify(&payload_bytes, &signature).is_err() {
+            // Jika tanda tangan salah atau data dimanipulasi, hentikan dengan error
+            bail!("Digital signature tidak valid! Payload mungkin telah dimanipulasi atau public key salah.");
+        }
+
+        // 5. Jika lolos verifikasi, ekstrak dan kembalikan AuditEvent aslinya
+        Ok(signed_payload.event)
+    }
+
+    /// HASH-CHAIN
+
+    pub fn calculate_record_hash(
+        record_id: &Uuid,
+        timestamp: &DateTime<Utc>,
+        prev_record_hash: Option<&str>,
+        event: &AuditEvent,
+    ) -> Result<String, serde_json::Error> {
+        let hash_input = serde_json::json!({
+            "record_id": record_id,
+            "timestamp": timestamp,
+            "prev_record_hash": prev_record_hash,
+            "event": event,
+        });
+
+        let serialized = serde_json::to_vec(&hash_input)?;
+
+        let mut hasher = Sha256::new();
+        hasher.update(serialized);
+
+        Ok(hex::encode(hasher.finalize()))
+    }
+
+    pub fn create_audit_record(
+        event: AuditEvent,
+        prev_record_hash: Option<String>,
+    ) -> Result<AuditRecord, serde_json::Error> {
+        let record_id = Uuid::now_v7();
+        let timestamp = Utc::now();
+
+        let record_hash = calculate_record_hash(
+            &record_id,
+            &timestamp,
+            prev_record_hash.as_deref(),
+            &event,
+        )?;
+
+        Ok(AuditRecord {
+            record_id,
+            timestamp,
+            prev_record_hash,
+            record_hash,
+            event,
+        })
+    }
+
+    pub fn verify_record(record: &AuditRecord) -> Result<bool, serde_json::Error> {
+        let calculated_hash = calculate_record_hash(
+            &record.record_id,
+            &record.timestamp,
+            record.prev_record_hash.as_deref(),
+            &record.event,
+        )?;
+
+        Ok(calculated_hash == record.record_hash)
+    }
+
+    pub fn verify_chain(
+        records: &[AuditRecord],
+    ) -> Result<bool, serde_json::Error> {
+        let mut expected_previous_hash: Option<String> = None;
+
+        for record in records {
+            // Periksa hubungan dengan record sebelumnya.
+            if record.prev_record_hash != expected_previous_hash {
+                return Ok(false);
+            }
+
+            // Hitung ulang hash record.
+            let calculated_hash = calculate_record_hash(
+                &record.record_id,
+                &record.timestamp,
+                record.prev_record_hash.as_deref(),
+                &record.event,
+            )?;
+
+            // Periksa integritas record.
+            if calculated_hash != record.record_hash {
+                return Ok(false);
+            }
+
+            expected_previous_hash = Some(record.record_hash.clone());
+        }
+
+        Ok(true)
+    }
+
+    pub fn create_audit_batch(
+        records: &[AuditRecord],
+        file_hash: String,
+        ipfs_cid: String,
+    ) -> Option<AuditBatch> {
+        if records.is_empty() {
+            return None;
+        }
+
+        let first = records.first()?;
+        let last = records.last()?;
+
+        Some(AuditBatch {
+            batch_id: Uuid::new_v4(),
+
+            start_time: first.timestamp,
+            end_time: last.timestamp,
+
+            record_count: records.len() as u64,
+
+            first_record_id: first.record_id,
+            last_record_id: last.record_id,
+
+            first_record_hash: first.record_hash.clone(),
+            final_record_hash: last.record_hash.clone(),
+
+            file_hash,
+            ipfs_cid,
+        })
+    }
 }
