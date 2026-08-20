@@ -1,4 +1,3 @@
-
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 use reqwest::Body;
@@ -6,9 +5,11 @@ use reqwest::Body;
 use tokio::fs::{self, OpenOptions};
 use tokio::io::AsyncWriteExt;
 use tokio::time::Duration;
-use tokio::sync::mpsc::Receiver;
 use anyhow::{anyhow, bail, Result, Context};
 use sha2::{Sha256, Digest};
+
+// ← Import ed25519_dalek untuk verifikasi signature
+use ed25519_dalek::{VerifyingKey, Signature, Verifier};
 
 use crate::{
     constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR, IPFS_BASE_URL}, 
@@ -50,16 +51,13 @@ impl Utils {
 
         println!("Respons dari IPFS: {:#?}", res);
 
-        // --- PENGECEKAN STATUS (Tetap dipertahankan) ---
         if !res.status().is_success() {
             let status_code = res.status();
             let error_text = res.text().await.unwrap_or_else(|_| "Gagal membaca body error".to_string());
             
             return Err(anyhow::anyhow!("IPFS Server Error ({}): {}", status_code, error_text).into());
         }
-        // -----------------------------------------------
 
-        // 1. Parsing response menjadi JSON dinamis (tanpa struct khusus)
         let res_parsed: serde_json::Value = res
             .json()
             .await
@@ -67,57 +65,17 @@ impl Utils {
 
         println!("Respons_parsed dari IPFS: {:#?}", res_parsed);
 
-        // 2. Ambil nilai CID secara manual. 
-        // Catatan: API standar IPFS biasanya menggunakan field "Hash" atau "cid". 
-        // Sesuaikan dengan format kembalian gateway Anda.
-        let cid = res_parsed["cid"] // Atau ganti menjadi res_parsed["cid"]
+        let cid = res_parsed["cid"]
             .as_str()
-            .unwrap_or("unknown_cid") // Nilai default jika field tidak ditemukan
+            .unwrap_or("unknown_cid")
             .to_string();
 
         Ok(cid)
     }
 
-    /// WORKER 1: Penulis Log (Menarik dari Queue)
-    pub fn spawn_log_writer_worker(mut rx: Receiver<AuditRecord>) {
-        tokio::spawn(async move {
-            // Terus berjalan selama channel/queue belum ditutup
-            while let Some(record) = rx.recv().await {
-                // 1. Serialisasi ke JSON
-                let log_line = match serde_json::to_string(&record) {
-                    Ok(json_str) => json_str + "\n",
-                    Err(e) => {
-                        eprintln!("Gagal serialisasi log: {}", e);
-                        continue; // Lewati event ini jika gagal
-                    }
-                };
-
-                // 2. Buka dan tulis ke file
-                let mut file = match OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(LOG_FILE_PATH)
-                    .await
-                {
-                    Ok(f) => f,
-                    Err(e) => {
-                        eprintln!("Gagal membuka file log: {}", e);
-                        continue;
-                    }
-                };
-
-                if let Err(e) = file.write_all(log_line.as_bytes()).await {
-                    eprintln!("Gagal menulis ke file log: {}", e);
-                }
-            }
-        });
-    }
-
-    /// WORKER 2: Rotasi, Upload IPFS, dan Publish ke IOTA
-    /// Parameter berubah: `iota_node_url` → `package_id` karena
-    /// `IotaLogClient::new()` tidak lagi menerima node URL (diambil dari konstanta IOTA_URL).
+    /// WORKER: Rotasi, Upload IPFS, dan Publish ke IOTA
     pub fn spawn_log_rotation_worker(
-        package_id: String,         // ← dari env var IOTA_PACKAGE_ID
+        package_id: String,
     ) {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(
@@ -128,7 +86,6 @@ impl Utils {
                 .expect("Gagal membuat IotaLogClient");
 
             let mut sequence_number: u64 = 0;
-
             let mut prev_tx_digest: Option<String> = None;
 
             loop {
@@ -149,14 +106,12 @@ impl Utils {
                     timestamp.timestamp()
                 );
 
-                // ── 1. Rename file (atomic) ───────────────────────────────────────
                 if let Err(e) = fs::rename(LOG_FILE_PATH, &temp_file_path).await {
                     eprintln!("[rotation] gagal rename file log: {e}");
                     continue;
                 }
                 println!("[rotation] log dirotasi: {temp_file_path}");
 
-                // ── 2. Hash file SEBELUM upload ───────────────────────────────────
                 let file_hash = match IotaLogClient::hash_file(&temp_file_path).await {
                     Ok(h) => h,
                     Err(e) => {
@@ -165,7 +120,6 @@ impl Utils {
                     }
                 };
 
-                // ── 3. Upload ke IPFS ─────────────────────────────────────────────
                 let cid = match Self::add_file_to_ipfs(&temp_file_path).await {
                     Ok(cid) => {
                         println!("[rotation] upload IPFS berhasil. CID: {cid}");
@@ -177,19 +131,15 @@ impl Utils {
                     }
                 };
 
-                // ── 4. Publish ke IOTA ────────────────────────────────────────────
                 let iota_metadata = IotaLogMetadata {
                     version: "1.0".to_string(),
                     log_sequence_number: sequence_number,
                     rotation_timestamp: timestamp,
                     ipfs_cid: cid,
                     file_hash,
-                    // Diisi oleh log writer worker; untuk sementara kosong
-                    // TODO: isi dari state yang dishare dengan AuditLogger
                     first_record_hash: String::new(),
                     final_record_hash: String::new(),
                     record_count: 0,
-                    // Gunakan nama field yang benar: prev_tx_digest
                     prev_tx_digest: prev_tx_digest.clone(),
                 };
 
@@ -199,19 +149,14 @@ impl Utils {
                             "[rotation] IOTA OK — Object ID: {} | TX: {}",
                             result.object_id, result.tx_digest
                         );
-                        // Simpan tx_digest (bukan object_id) untuk chain of custody,
-                        // karena field penghubung antar batch adalah prev_tx_digest
                         prev_tx_digest = Some(result.tx_digest);
                         sequence_number += 1;
                     }
                     Err(e) => {
                         eprintln!("[rotation] gagal publish ke IOTA: {e:?}");
-                        // sequence_number tidak di-increment jika publish gagal
-                        // agar tidak ada gap di log_sequence_number on-chain
                     }
                 }
 
-                // ── 5. Hapus file lokal setelah semua selesai ─────────────────────
                 if let Err(e) = fs::remove_file(&temp_file_path).await {
                     eprintln!("[rotation] gagal hapus file temp: {e}");
                 }
@@ -241,17 +186,17 @@ impl Utils {
         let signature = Signature::from_bytes(&sig_array);
 
         // 3. Serialize ulang data event ke bentuk bytes (JSON)
-        let payload_bytes = serde_json::to_vec(&signed_payload.event)
+        // ← Perbaikan: field bernama `payload`, bukan `event`
+        let payload_bytes = serde_json::to_vec(&signed_payload.payload)
             .context("Gagal melakukan serialize pada event payload")?;
 
         // 4. Verifikasi signature terhadap payload bytes
         if verifying_key.verify(&payload_bytes, &signature).is_err() {
-            // Jika tanda tangan salah atau data dimanipulasi, hentikan dengan error
             bail!("Digital signature tidak valid! Payload mungkin telah dimanipulasi atau public key salah.");
         }
 
-        // 5. Jika lolos verifikasi, ekstrak dan kembalikan AuditEvent aslinya
-        Ok(signed_payload.event)
+        // 5. Jika lolos verifikasi, kembalikan AuditEvent dari field `payload`
+        Ok(signed_payload.payload)
     }
 
     /// HASH-CHAIN
@@ -277,8 +222,6 @@ impl Utils {
         Ok(hex::encode(hasher.finalize()))
     }
 
-
-
     pub fn verify_record(record: &AuditRecord) -> Result<bool, serde_json::Error> {
         let calculated_hash = Self::calculate_record_hash(
             &record.record_id,
@@ -289,5 +232,4 @@ impl Utils {
 
         Ok(calculated_hash == record.record_hash)
     }
-
 }

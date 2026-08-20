@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use iota_json_rpc_types::{
     IotaObjectData, IotaObjectDataFilter, IotaObjectDataOptions, IotaObjectResponseQuery,
+    IotaTransactionBlockEffectsAPI, // ← wajib di-import agar .transaction_digest() dan .created() tersedia
 };
 use iota_types::{
     base_types::ObjectID,
@@ -43,8 +44,6 @@ pub struct PublishResult {
 
 // ── LogRecord on-chain (hasil fetch object) ───────────────────────────────────
 
-/// Representasi `LogRecord` yang di-fetch dari IOTA,
-/// sebelum di-parse ke `IotaLogMetadata`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogRecordOnChain {
     pub object_id: ObjectID,
@@ -75,8 +74,6 @@ impl IotaLogClient {
 
     // ── publish_metadata ──────────────────────────────────────────────────────
 
-    /// Memanggil `create_log(json_data, ctx)` di Move untuk membuat frozen `LogRecord`.
-    /// Mengembalikan `object_id` dari LogRecord yang baru dibuat dan `tx_digest`.
     pub async fn publish_metadata(
         &self,
         metadata: &IotaLogMetadata,
@@ -89,8 +86,7 @@ impl IotaLogClient {
         let iota_client = IotaUtils::get_iota_client().await?;
         let sender: iota_types::base_types::IotaAddress = (&self.key_pair.public()).into();
 
-        // 3. Susun call argument — json_data bertipe String di Move,
-        //    di-encode sebagai BCS byte vector (Move String = BCS Vec<u8> UTF-8)
+        // 3. Encode argument BCS
         let call_args: Vec<CallArg> = vec![
             CallArg::Pure(
                 bcs::to_bytes(&metadata_json)
@@ -98,20 +94,19 @@ impl IotaLogClient {
             ),
         ];
 
-        // 4. Build ProgrammableTransaction via IotaUtils::construct_pt
-        //    Module: audit_log | Fungsi: create_log
-        let module = Identifier::from_str("audit_log")
+        // 4. Build ProgrammableTransaction
+        let module = Identifier::new("audit_log")
             .map_err(|e| anyhow::anyhow!("nama module tidak valid: {e}"))?;
 
         let pt = IotaUtils::construct_pt(
             "create_log".to_string(),
             self.package_id,
             module,
-            vec![],     // tidak ada type argument
+            vec![],
             call_args,
         )?;
 
-        // 5. Reserve gas via IotaUtils (gas station / sponsored tx)
+        // 5. Reserve gas
         let (sponsor_address, reservation_id, gas_coins) =
             IotaUtils::reserve_gas(10_000_000, 60).await?;
 
@@ -127,24 +122,32 @@ impl IotaLogClient {
             sponsor_address,
         );
 
-        // 7. Sign dan execute
+        // 7. Sign
         let intent_msg = IntentMessage::new(Intent::iota_transaction(), &tx_data);
         let signature = Signature::new_secure(&intent_msg, &self.key_pair);
-        let tx = Transaction::from_data(tx_data, vec![signature]);
 
-        let exec_response = IotaUtils::execute_tx(tx.into_inner(), reservation_id).await?;
-        IotaUtils::handle_error_execute_tx(exec_response.clone())?;
+        // Transaction::from_data mengembalikan Transaction (bukan Envelope langsung)
+        let tx: Transaction = Transaction::from_data(tx_data, vec![signature]);
 
-        // 8. Ekstrak tx_digest dan object_id LogRecord yang baru di-freeze
-        let effects = exec_response
-            .effects
-            .as_ref()
+        // 8. Execute — kirim sebagai Transaction (sesuai signature IotaUtils::execute_tx)
+        let exec_response = IotaUtils::execute_tx(tx, reservation_id).await?;
+
+        // Clone tidak lagi diperlukan karena handle_error_execute_tx mengonsumsi exec_response
+        // Kita perlu effects dulu sebelum consume, jadi ekstrak dulu
+        let effects_opt = exec_response.effects.clone();
+        let error_opt = exec_response.error.clone();
+
+        // Periksa error manual (hindari double-consume)
+        if let Some(err) = error_opt {
+            return Err(anyhow::anyhow!("execute_tx error: {err}").into());
+        }
+
+        let effects = effects_opt
             .ok_or_else(|| anyhow::anyhow!("effects tidak tersedia di response"))?;
 
+        // IotaTransactionBlockEffectsAPI sudah di-import, method tersedia
         let tx_digest = effects.transaction_digest().to_string();
 
-        // LogRecord yang di-freeze muncul di `created` lalu masuk `unwrapped_then_deleted`
-        // Pada IOTA Rebased, frozen object muncul di effects.created
         let object_id = effects
             .created()
             .first()
@@ -164,12 +167,11 @@ impl IotaLogClient {
     ) -> Result<Vec<LogRecordOnChain>, AuditError> {
         let iota_client = IotaUtils::get_iota_client().await?;
 
-        // Filter berdasarkan StructType `<package_id>::audit_log::LogRecord`
         let struct_tag = StructTag {
             address: AccountAddress::from(self.package_id),
-            module: Identifier::from_str("audit_log")
+            module: Identifier::new("audit_log")
                 .map_err(|e| anyhow::anyhow!("module identifier tidak valid: {e}"))?,
-            name: Identifier::from_str("LogRecord")
+            name: Identifier::new("LogRecord")
                 .map_err(|e| anyhow::anyhow!("struct name identifier tidak valid: {e}"))?,
             type_params: vec![],
         };
@@ -177,7 +179,7 @@ impl IotaLogClient {
         let query = IotaObjectResponseQuery {
             filter: Some(IotaObjectDataFilter::StructType(struct_tag)),
             options: Some(IotaObjectDataOptions {
-                show_content: true,     // agar json_data bisa dibaca
+                show_content: true,
                 show_type: true,
                 show_owner: true,
                 ..Default::default()
@@ -186,11 +188,9 @@ impl IotaLogClient {
 
         let mut results: Vec<LogRecordOnChain> = Vec::new();
         let mut cursor: Option<iota_types::base_types::ObjectID> = None;
-        // Ambil per halaman 50 object; sesuaikan jika perlu
         let page_size: usize = 50;
 
         'pagination: loop {
-            // Hitung sisa yang masih dibutuhkan jika limit ada
             let fetch_size = match limit {
                 Some(lim) => page_size.min(lim.saturating_sub(results.len())),
                 None => page_size,
@@ -203,8 +203,6 @@ impl IotaLogClient {
             let page = iota_client
                 .read_api()
                 .get_owned_objects(
-                    // LogRecord adalah frozen object; owner-nya adalah @0x0 (Immutable)
-                    // Gunakan query_objects untuk object tanpa owner spesifik
                     iota_types::base_types::IotaAddress::ZERO,
                     query.clone(),
                     cursor,
@@ -241,31 +239,44 @@ impl IotaLogClient {
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
-    /// Parse `IotaObjectData` → `LogRecordOnChain`.
-    /// Mengekstrak field `json_data` dari content object lalu deserialize ke `IotaLogMetadata`.
     fn parse_log_record(object_data: &IotaObjectData) -> Result<LogRecordOnChain, AuditError> {
         let object_id = object_data.object_id;
 
-        // Content object tersedia karena show_content: true di query options
         let content = object_data
             .content
             .as_ref()
             .ok_or_else(|| anyhow::anyhow!("content object {object_id} kosong"))?;
 
-        // IotaObjectData content adalah IotaParsedData::MoveObject
         let move_object = match content {
             iota_json_rpc_types::IotaParsedData::MoveObject(obj) => obj,
             _ => return Err(anyhow::anyhow!("object {object_id} bukan MoveObject").into()),
         };
 
-        // Fields direpresentasikan sebagai serde_json::Value
-        let json_data_str = move_object
-            .fields
-            .get("json_data")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                anyhow::anyhow!("field json_data tidak ditemukan pada object {object_id}")
-            })?;
+        // IotaMoveStruct adalah enum; gunakan pattern matching untuk akses field
+        // Biasanya IotaMoveObject.fields bertipe IotaMoveStruct::WithFields(BTreeMap)
+        let json_data_str = match &move_object.fields {
+            iota_json_rpc_types::IotaMoveStruct::WithFields(fields) => {
+                fields
+                    .get("json_data")
+                    .and_then(|v| {
+                        // IotaMoveValue::String
+                        if let iota_json_rpc_types::IotaMoveValue::String(s) = v {
+                            Some(s.as_str())
+                        } else {
+                            None
+                        }
+                    })
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("field json_data tidak ditemukan pada object {object_id}")
+                    })?
+            }
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "format fields tidak terduga pada object {object_id}"
+                )
+                .into())
+            }
+        };
 
         let metadata: IotaLogMetadata = serde_json::from_str(json_data_str)
             .map_err(|e| {
@@ -277,7 +288,6 @@ impl IotaLogClient {
 
     // ── hash_file ─────────────────────────────────────────────────────────────
 
-    /// Hash file menggunakan SHA-256.
     pub async fn hash_file(file_path: &str) -> Result<String, AuditError> {
         let bytes = fs::read(file_path)
             .await

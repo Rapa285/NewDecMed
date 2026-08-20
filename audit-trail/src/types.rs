@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
@@ -6,7 +5,7 @@ use schemars::JsonSchema;
 use std::fmt::Debug;
 use iota_json_rpc_types::{IotaObjectRef, IotaTransactionBlockEffects};
 use iota_types::{
-    base_types::{IotaAddress},
+    base_types::IotaAddress,
 };
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -39,7 +38,8 @@ pub struct ReserveGasResult {
     pub sponsor_address: IotaAddress,
 }
 
-#[derive(Debug, Deserialize, JsonSchema, Serialize)]
+// ← Tambahkan Clone agar .clone() bisa dipanggil di iota_client.rs
+#[derive(Debug, Clone, Deserialize, JsonSchema, Serialize)]
 pub struct ExecuteTxResponse {
     pub effects: Option<IotaTransactionBlockEffects>,
     pub error: Option<String>,
@@ -77,34 +77,15 @@ impl SignedEvent {
 /// Satu file audit yang dikumpulkan selama rolling window.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditBatch {
-    /// ID unik batch.
     pub batch_id: Uuid,
-
-    /// Waktu awal rolling window.
     pub start_time: DateTime<Utc>,
-
-    /// Waktu akhir rolling window.
     pub end_time: DateTime<Utc>,
-
-    /// Jumlah record dalam file.
     pub record_count: u64,
-
-    /// ID record pertama.
     pub first_record_id: Uuid,
-
-    /// ID record terakhir.
     pub last_record_id: Uuid,
-
-    /// Hash record pertama.
     pub first_record_hash: String,
-
-    /// Hash record terakhir / chain head.
     pub final_record_hash: String,
-
-    /// Hash keseluruhan file audit.
     pub file_hash: String,
-
-    /// CID file audit yang disimpan di IPFS.
     pub ipfs_cid: String,
 }
 
@@ -154,7 +135,7 @@ pub enum AuditEventDetails {
     CapabilityIssuance {
         capability_id: String,
         access_scope: String,
-        expiry_duration: u64, // Bisa juga menggunakan tipe Duration
+        expiry_duration: u64,
         transaction_digest: String,
     },
 
@@ -194,7 +175,7 @@ pub enum AuditEventDetails {
     IotaTransaction {
         transaction_digest: String,
         payload_hash: String,
-        network_confirmation_status: String, // Atau enum Confirmed/Pending
+        network_confirmation_status: String,
     },
 
     #[serde(rename = "EV9")]
@@ -206,14 +187,14 @@ pub enum AuditEventDetails {
 
     #[serde(rename = "EV10")]
     SponsorshipDecision {
-        approval_status: String, // Atau bool (true/false)
+        approval_status: String,
         decision_reason: String,
         approved_by: String,
     },
 
     #[serde(rename = "EV11")]
     KeyManagement {
-        key_operation: String, // Create, Update, Delete
+        key_operation: String,
         key_id: String,
         key_type: String,
     },
@@ -229,7 +210,7 @@ pub enum AuditEventDetails {
     RedisWrite {
         redis_key_type: String,
         operation_type: String,
-        ttl_remaining: i64, // Dalam detik/milidetik
+        ttl_remaining: i64,
     },
 
     #[serde(rename = "EV14")]
@@ -242,8 +223,8 @@ pub enum AuditEventDetails {
     #[serde(rename = "EV15")]
     IPFSOperation {
         cid: String,
-        operation_type: String, // Upload/Download
-        data_size: u64, // Dalam bytes
+        operation_type: String,
+        data_size: u64,
     },
 
     #[serde(rename = "EV16")]
@@ -265,6 +246,6 @@ pub enum AuditEventDetails {
         capability_checked: String,
         required_scope: String,
         actual_scope: String,
-        validation_result: bool, // true jika valid, false jika tidak
+        validation_result: bool,
     },
 }

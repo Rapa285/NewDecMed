@@ -1,6 +1,5 @@
 use crate::{
-    // types::{ExecuteTxResponse, ReserveGasResponse, SuccessResponse, UtilIpfsAddResponse},
-    types::{AuditRecord, SignedEvent},
+    types::{AuditEvent, SignedEvent},
     utils::Utils
 };
 
@@ -21,7 +20,13 @@ impl Handlers {
     ) -> impl IntoResponse {
 
         // ── Fase 1: verifikasi source ─────────────────────────────────
-        let audit_event = Utils::verify_and_extract_event(signed);
+        let audit_event = match Utils::verify_and_extract_event(signed) {
+            Ok(event) => event,
+            Err(e) => {
+                eprintln!("[audit] gagal verifikasi event: {e}");
+                return Json(json!({"status": "error", "message": format!("{e}")}));
+            }
+        };
 
         // ── Fase 2: masukkan event ke audit queue ─────────────────
         if let Err(e) = state.audit_tx.send(audit_event).await {

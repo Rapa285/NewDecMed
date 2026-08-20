@@ -1,10 +1,11 @@
 use tokio::fs::OpenOptions;
-use tokio::io::{AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
+use tokio::sync::mpsc::Receiver; // ← tokio, bukan std
 use chrono::Utc;
 use uuid::Uuid;
-use std::sync::mpsc::Receiver;
 use crate::types::{AuditEvent, AuditRecord};
 use crate::constants::LOG_FILE_PATH;
+use crate::utils::Utils;
 
 pub struct AuditLogger {
     rx: Receiver<AuditEvent>,
@@ -20,7 +21,8 @@ impl AuditLogger {
     }
 
     pub async fn run(mut self) {
-        while let Some(event) = self.rx.recv() {
+        // tokio::sync::mpsc::Receiver menggunakan .recv().await → Option<T>
+        while let Some(event) = self.rx.recv().await {
 
             // 1. Buat AuditRecord menggunakan hash sebelumnya
             let record = match create_audit_record(
@@ -28,7 +30,6 @@ impl AuditLogger {
                 self.prev_record_hash.clone(),
             ) {
                 Ok(record) => record,
-
                 Err(e) => {
                     eprintln!(
                         "[audit] gagal membuat AuditRecord: {e}"
@@ -37,14 +38,14 @@ impl AuditLogger {
                 }
             };
 
-            // Tulis ke file log
+            // 2. Tulis ke file log
             if let Err(e) = write_audit_record(&record).await {
                 eprintln!(
                     "[audit] gagal menulis AuditRecord: {e}"
                 );
             }
 
-            // Update hash sebelumnya
+            // 3. Update hash sebelumnya
             self.prev_record_hash = Some(record.record_hash.clone());
         }
     }
@@ -57,7 +58,8 @@ pub fn create_audit_record(
     let record_id = Uuid::now_v7();
     let timestamp = Utc::now();
 
-    let record_hash = calculate_record_hash(
+    // Delegasikan ke Utils::calculate_record_hash (single source of truth)
+    let record_hash = Utils::calculate_record_hash(
         &record_id,
         &timestamp,
         prev_record_hash.as_deref(),

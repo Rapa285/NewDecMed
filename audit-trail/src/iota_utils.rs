@@ -1,10 +1,10 @@
 use anyhow::{anyhow, Context};
+use std::str::FromStr; // ← diperlukan untuk Identifier::from_str
 
 use crate::{
     constants::{GAS_STATION_BASE_URL, IOTA_URL},
     current_fn,
     audit_error::AuditError,
-    // proxy_error::ProxyError,
     types::{ExecuteTxResponse, ReserveGasResponse},
 };
 
@@ -14,22 +14,22 @@ use iota_json_rpc_types::{
 use iota_sdk::{IotaClient, IotaClientBuilder};
 use iota_types::{
     base_types::{IotaAddress, ObjectID, ObjectRef},
-    crypto::{EmptySignInfo},
+    crypto::EmptySignInfo,
     message_envelope::Envelope,
     programmable_transaction_builder::ProgrammableTransactionBuilder,
     transaction::{
         CallArg, ProgrammableTransaction, SenderSignedData, TransactionData,
-        TransactionDataAPI,
+        TransactionDataAPI, Transaction,
     },
     Identifier, TypeTag,
 };
 use serde_json::json;
-use serde::{
-    de::{DeserializeOwned},
-};
-pub struct IotaUtils{}
+use serde::de::DeserializeOwned;
+use axum::http::StatusCode;
 
-impl IotaUtils{
+pub struct IotaUtils {}
+
+impl IotaUtils {
     pub async fn reserve_gas(
         gas_budget: u64,
         reserve_duration_secs: u64,
@@ -39,8 +39,8 @@ impl IotaUtils{
             .post(format!("{GAS_STATION_BASE_URL}/reserve_gas"))
             .bearer_auth("token")
             .json(&json!({
-            "gas_budget": gas_budget,
-            "reserve_duration_secs": reserve_duration_secs
+                "gas_budget": gas_budget,
+                "reserve_duration_secs": reserve_duration_secs
             }))
             .send()
             .await
@@ -49,7 +49,6 @@ impl IotaUtils{
             .json::<ReserveGasResponse>()
             .await
             .context(current_fn!())?;
-        // println!("{:#?}", res_body);
         Ok(res_body
             .result
             .map(|result| {
@@ -75,7 +74,7 @@ impl IotaUtils{
     }
 
     pub async fn execute_tx(
-        tx: Envelope<SenderSignedData, EmptySignInfo>,
+        tx: Transaction, // ← diganti dari Envelope<SenderSignedData, EmptySignInfo>
         reservation_id: u64,
     ) -> Result<ExecuteTxResponse, AuditError> {
         let (tx_base_64, signature_base_64) = tx.to_tx_bytes_and_signatures();
@@ -107,7 +106,10 @@ impl IotaUtils{
         call_args: Vec<CallArg>,
     ) -> Result<ProgrammableTransaction, AuditError> {
         let mut builder = ProgrammableTransactionBuilder::new();
-        let function = Identifier::from_str(function_name.as_str()).context(current_fn!())?;
+        // Gunakan Identifier::new() bukan from_str (dari move-core-types)
+        let function = Identifier::new(function_name.as_str())
+            .map_err(|e| anyhow::anyhow!("nama fungsi tidak valid: {e}"))
+            .context(current_fn!())?;
 
         builder
             .move_call(package, module, function, type_arguments, call_args)
@@ -171,15 +173,17 @@ impl IotaUtils{
 
     pub fn handle_error_move_call_read_only(response: DevInspectResults) -> Result<(), AuditError> {
         if response.error.is_some() {
-            return Err(AuditError::Anyhow(
-                anyhow!(response.error.unwrap()).context(current_fn!()),
-            ));
+            return Err(AuditError::Anyhow {
+                source: anyhow!(response.error.unwrap()).context(current_fn!()),
+                code: StatusCode::INTERNAL_SERVER_ERROR,
+            });
         }
 
         if response.effects.status().is_err() {
-            return Err(AuditError::Anyhow(
-                anyhow!(response.effects.status().to_string()).context(current_fn!()),
-            ));
+            return Err(AuditError::Anyhow {
+                source: anyhow!(response.effects.status().to_string()).context(current_fn!()),
+                code: StatusCode::INTERNAL_SERVER_ERROR,
+            });
         }
 
         Ok(())
@@ -187,28 +191,19 @@ impl IotaUtils{
 
     pub fn handle_error_execute_tx(response: ExecuteTxResponse) -> Result<u64, AuditError> {
         if response.error.is_some() {
-            return Err(AuditError::Anyhow(
-                anyhow!(response.error.unwrap()).context(current_fn!()),
-            ));
+            return Err(AuditError::Anyhow {
+                source: anyhow!(response.error.unwrap()).context(current_fn!()),
+                code: StatusCode::INTERNAL_SERVER_ERROR,
+            });
         }
 
         if response.effects.is_some() && response.effects.as_ref().unwrap().status().is_err() {
-            return Err(AuditError::Anyhow(
-                anyhow!(response.effects.unwrap().status().to_string()).context(current_fn!()),
-            ));
+            return Err(AuditError::Anyhow {
+                source: anyhow!(response.effects.unwrap().status().to_string()).context(current_fn!()),
+                code: StatusCode::INTERNAL_SERVER_ERROR,
+            });
         }
 
         Ok(0)
     }
-
-    // pub fn get_global_admin_iota_address_from_keys_entry(
-    //     keys_entry: &KeysEntry,
-    // ) -> Result<IotaAddress, AuditError> {
-    //     Ok(
-    //         IotaAddress::from_str(&keys_entry.admin_address.as_ref().ok_or(
-    //             anyhow!("Global admin iota address not found on keys entry").context(current_fn!()),
-    //         )?)
-    //         .context(current_fn!())?,
-    //     )
-    // }
 }
