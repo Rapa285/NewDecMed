@@ -12,6 +12,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::move_call::MoveCall;
 
+// ATS
+use crate::ATS::ATSClient;
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum AuthRole {
     AdministrativePersonnel,
@@ -43,6 +46,7 @@ pub struct AccessKeys {
 }
 
 pub struct AppState {
+    pub ats_client: ATSClient, // Untuk ATS
     pub global_admin_iota_address: String,
     pub global_admin_iota_key_pair: String,
     pub jwt_ecdsa_key_pair: String,

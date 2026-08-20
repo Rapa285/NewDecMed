@@ -7,6 +7,8 @@ mod proxy_error;
 mod tes_error;
 mod types;
 mod utils;
+// module ATS
+mod ats;
 
 use std::{env, error::Error, str::FromStr, sync::Arc};
 
@@ -34,6 +36,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // Load envs from .env file
     dotenvy::dotenv()?;
 
+    let ats_endpoint = std::env::var("ATS_ENDPOINT")
+    .unwrap_or_else(|_| "http://localhost:3000/api/events".to_string());
+
+
+    
     // Envs
     let redis_connection_url = env::var("REDIS_CONNECTION_URL_DEV")?;
     let port = env::var("PORT")?;
@@ -69,7 +76,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
         global_admin_cap_id: ObjectID::from_str(DECMED_GLOBAL_ADMIN_CAP_ID)?,
     };
     let move_call = MoveCall { decmed_package };
+
+
+    // ATS
+    let ats_endpoint = std::env::var("ATS_ENDPOINT")
+        .unwrap_or_else(|_| "http://localhost:3000/api/events".to_string());
+
     let shared_state = Arc::new(AppState {
+        ats_client: ATSClient::with_endpoint(&ats_endpoint),  // tambahan ATS
         global_admin_iota_address,
         global_admin_iota_key_pair,
         jwt_ecdsa_key_pair,

@@ -33,6 +33,10 @@ use crate::types::{
 use crate::types::{GenerateJwtHandlerResponse, HandlerStoreKeysPayload};
 use crate::utils::Utils;
 
+// Tambahan untuk ATS
+use crate::ATS::{AuditEvent, AuditEventDetails, AuditOutcome};
+use uuid::Uuid;
+
 pub struct Handlers {}
 
 impl Handlers {
@@ -90,6 +94,24 @@ impl Handlers {
             .await
             .context(current_fn!())?;
         let created_at = Utils::sys_time_to_iso(std::time::SystemTime::now());
+
+        // ── Audit: upload IPFS ───────────────────────────────────────────────────────
+        {
+            let cid_clone = cid.clone();
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor_id: hospital_personnel_iota_address.to_string(),
+                target_object: cid_clone.clone(),
+                outcome: AuditOutcome::Success,
+                action_type: "IPFS_UPLOAD".to_string(),
+                details: AuditEventDetails::IPFSOperation {
+                    cid: cid_clone,
+                    operation_type: "Upload".to_string(),
+                    data_size: 0, // ukuran tidak tersedia di titik ini
+                },
+            };
+            state.ats_client.send_event_nonblocking(event, "create_medical_record");
+        }
 
         let medical_metadata = MedicalMetadata {
             capsule: medical_metadata.capsule,
@@ -652,6 +674,24 @@ impl Handlers {
                 SetOptions::default().with_expiration(SetExpiry::EX(NONCE_EXP_DUR)),
             )
             .context(current_fn!())?;
+        
+        // ── Audit: permintaan nonce ───────────────────────────────────────────────────
+        {
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor_id: patient_iota_address.to_string(),
+                target_object: "nonce".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "NONCE_REQUEST".to_string(),
+                details: AuditEventDetails::PRERequest {
+                    endpoint_called: "/api/v1/nonce".to_string(),
+                    request_id: Uuid::new_v4().to_string(),
+                    caller_component: "client".to_string(),
+                    channel_encryption: "TLS".to_string(),
+                },
+            };
+            state.ats_client.send_event_nonblocking(event, "get_nonce");
+        }
 
         Ok(Utils::build_success_response(nonce, StatusCode::OK))
     }
@@ -783,6 +823,26 @@ impl Handlers {
             "access_token_read": hospital_personnel_access_token_read,
             "access_token_update": hospital_personnel_access_token_update,
         });
+
+        // ── Audit: penyimpanan kunci PRE ─────────────────────────────────────────────
+        {
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor_id: patient_iota_address.to_string(),
+                target_object: format!(
+                    "keys:{}@{}",
+                    hospital_personnel_iota_address, patient_iota_address
+                ),
+                outcome: AuditOutcome::Success,
+                action_type: "KEY_STORE".to_string(),
+                details: AuditEventDetails::RedisWrite {
+                    redis_key_type: "pre_access_keys".to_string(),
+                    operation_type: "SET".to_string(),
+                    ttl_remaining: update_keys_duration.unwrap_or(read_keys_duration) as i64,
+                },
+            };
+            state.ats_client.send_event_nonblocking(event, "store_keys");
+        }
 
         Ok(Utils::build_success_response(res_data, StatusCode::OK))
     }
