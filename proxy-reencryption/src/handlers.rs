@@ -34,7 +34,7 @@ use crate::types::{GenerateJwtHandlerResponse, HandlerStoreKeysPayload};
 use crate::utils::Utils;
 
 // Tambahan untuk ATS
-use crate::ATS::{AuditEvent, AuditEventDetails, AuditOutcome};
+use crate::ats::{AuditEvent, AuditEventDetails, AuditOutcome};
 use uuid::Uuid;
 
 pub struct Handlers {}

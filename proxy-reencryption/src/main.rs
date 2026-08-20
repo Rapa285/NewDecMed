@@ -31,15 +31,13 @@ use move_call::MoveCall;
 use tower::ServiceBuilder;
 use types::{AppState, DecmedPackage};
 
+// use ATS
+use crate::ats::ATSClient;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     // Load envs from .env file
     dotenvy::dotenv()?;
-
-    let ats_endpoint = std::env::var("ATS_ENDPOINT")
-    .unwrap_or_else(|_| "http://localhost:3000/api/events".to_string());
-
-
     
     // Envs
     let redis_connection_url = env::var("REDIS_CONNECTION_URL_DEV")?;

@@ -287,7 +287,7 @@ impl Utils {
     }
 
     pub fn generate_64_bytes_seed() -> [u8; 64] {
-        let mut rng = rand::rng();
+        let mut rng = rand::thread_rng();
         let mut random_seed = [0u8; 64];
         rng.fill(&mut random_seed);
 

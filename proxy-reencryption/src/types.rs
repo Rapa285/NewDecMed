@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use crate::move_call::MoveCall;
 
 // ATS
-use crate::ATS::ATSClient;
+use crate::ats::ATSClient;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum AuthRole {
