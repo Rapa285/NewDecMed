@@ -8,8 +8,7 @@ use anyhow::{Context, Result, anyhow};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedAuditEvent {
-    #[serde(flatten)]
-    pub payload: AuditEvent,
+    pub payload: String,
     pub signature: String,
     pub public_key: String,
 }
@@ -100,13 +99,14 @@ impl ATSClient {
 
     /// Kirim event secara sinkron (await). Gunakan ini jika Anda butuh menangani error.
     pub async fn send_event(&self, event: AuditEvent) -> Result<()> {
-        let payload_bytes = serde_json::to_vec(&event)
-            .context("gagal serialize AuditEvent")?;
+
+        let payload_string = serde_json::to_string(&event)?;
+        let payload_bytes = payload_string.as_bytes();
 
         let signature: Signature = self.signing_key.sign(&payload_bytes);
 
         let signed = SignedAuditEvent {
-            payload: event,
+            payload: payload_string,
             signature: hex::encode(signature.to_bytes()),
             public_key: hex::encode(self.public_key.as_bytes()),
         };
@@ -156,14 +156,26 @@ struct ATSWorker {
 
 impl ATSWorker {
     async fn send(&self, event: AuditEvent) -> Result<()> {
-        let payload_bytes = serde_json::to_vec(&event)?;
+        let payload_string = serde_json::to_string(&event)?;
+
+        let payload_bytes = payload_string.as_bytes();
         let signature: Signature = self.signing_key.sign(&payload_bytes);
 
         let signed = SignedAuditEvent {
-            payload: event,
+            payload: payload_string,
             signature: hex::encode(signature.to_bytes()),
             public_key: hex::encode(self.pubkey_bytes),
         };
+
+        // ─── TAMBAHKAN PRINT DI SINI ─────────────────────────────────────────
+        // Cetak data dalam format JSON yang rapi (Pretty Print)
+        if let Ok(json_debug) = serde_json::to_string_pretty(&signed) {
+            println!("[ATS Worker] Akan mengirim event ke endpoint '{}':\n{}", self.endpoint, json_debug);
+        } else {
+            // Fallback jika pretty print gagal (membutuhkan trait Debug pada SignedAuditEvent)
+            println!("[ATS Worker] Akan mengirim event: {:?}", signed);
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         let res = self.client.post(&self.endpoint).json(&signed).send().await?;
         if !res.status().is_success() {

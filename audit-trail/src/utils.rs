@@ -49,7 +49,7 @@ impl Utils {
             .await
             .context(current_fn!())?;
 
-        println!("Respons dari IPFS: {:#?}", res);
+        // println!("Respons dari IPFS: {:#?}", res);
 
         if !res.status().is_success() {
             let status_code = res.status();
@@ -63,7 +63,7 @@ impl Utils {
             .await
             .context(current_fn!())?;
 
-        println!("Respons_parsed dari IPFS: {:#?}", res_parsed);
+        // println!("Respons_parsed dari IPFS: {:#?}", res_parsed);
 
         let cid = res_parsed["cid"]
             .as_str()
@@ -187,16 +187,18 @@ impl Utils {
 
         // 3. Serialize ulang data event ke bentuk bytes (JSON)
         // ← Perbaikan: field bernama `payload`, bukan `event`
-        let payload_bytes = serde_json::to_vec(&signed_payload.payload)
-            .context("Gagal melakukan serialize pada event payload")?;
+        let payload_bytes = signed_payload.payload.as_bytes();
 
         // 4. Verifikasi signature terhadap payload bytes
         if verifying_key.verify(&payload_bytes, &signature).is_err() {
             bail!("Digital signature tidak valid! Payload mungkin telah dimanipulasi atau public key salah.");
         }
 
+        let audit_event: AuditEvent = serde_json::from_str(&signed_payload.payload)
+            .context("Gagal mem-parsing payload string menjadi AuditEvent")?;
+
         // 5. Jika lolos verifikasi, kembalikan AuditEvent dari field `payload`
-        Ok(signed_payload.payload)
+        Ok(audit_event)
     }
 
     /// HASH-CHAIN

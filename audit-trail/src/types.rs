@@ -57,7 +57,7 @@ pub enum AuditOutcome {
 
 #[derive(Debug, Deserialize)]
 pub struct SignedEvent {
-    pub payload: AuditEvent,
+    pub payload: String,
     pub signature: String,
     pub public_key: String,
 }

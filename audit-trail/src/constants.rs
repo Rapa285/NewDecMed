@@ -1,6 +1,6 @@
 
-pub const IOTA_URL: &str = "https://103.107.4.64:9000";
-pub const GAS_STATION_BASE_URL: &str = "http://103.107.4.68:9527/v1";
+pub const IOTA_URL: &str = "http://103.107.4.64:9000";
+pub const GAS_STATION_BASE_URL: &str = "http://103.107.4.68:9528/v1";
 pub const GAS_BUDGET: u64 = 50_000_000;
 pub const _HASH_SALT: &str = "169224A2BE2B267684F93A9CE38080D359BD774741FD3AE738D09B657A1A8104";
 pub const IPFS_BASE_URL: &str = "http://103.107.4.68:9094";
@@ -11,4 +11,5 @@ pub const LOG_DIR: &str = "./logs";
 pub const LOG_FILE_PATH: &str = "./logs/audit_logs.log";
 
 pub const IOTA_KEY_PAIR: &str = "iotaprivkey1qp5wft4pg7rf8prm2ddd3y38zstknqjy7jmkp02gzf0lwsdzurycqt4v3d6";
-pub const ATS_PACKAGE_ID: &str = "0x69c826e6adcec1efdcaab1034fd45afb4faca267da6717059b1b5bde6fb93ee6";
+pub const IOTA_ADDRESS: &str = "0xa0dd40a6c82863f7fff88b90555371e4ee52c9c94dcaf101cc08145f14650f0c";
+pub const ATS_PACKAGE_ID: &str = "0x809a572837d2adb6c3432ff81e7a56615b5a0ea23c50151606c53e02eaed27fa";

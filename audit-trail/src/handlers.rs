@@ -19,6 +19,7 @@ impl Handlers {
         Json(signed): Json<SignedEvent>,
     ) -> impl IntoResponse {
 
+        
         // ── Fase 1: verifikasi source ─────────────────────────────────
         let audit_event = match Utils::verify_and_extract_event(signed) {
             Ok(event) => event,
