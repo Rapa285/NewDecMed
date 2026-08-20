@@ -47,12 +47,12 @@ published-version = "1"
 
 [env.new_localnet]
 chain-id = "8f9fee67"
-original-published-id = "0xa5b53b6811fc8b532321f7d6ef2f02ae898d1b9d1d7705886423911ea5611c6e"
+original-published-id = "0x0287afaf6946d3aaa0d926bc3e9f75423c0c53fd0516532385076d83051bd1b1"
 latest-published-id = "0xa5b53b6811fc8b532321f7d6ef2f02ae898d1b9d1d7705886423911ea5611c6e"
 published-version = "1"
 
 [env.local-vps]
 chain-id = "8f9fee67"
-original-published-id = "0x0287afaf6946d3aaa0d926bc3e9f75423c0c53fd0516532385076d83051bd1b1"
-latest-published-id = "0x0287afaf6946d3aaa0d926bc3e9f75423c0c53fd0516532385076d83051bd1b1"
+original-published-id = "0x86e70d3c74e3ac92eccfbe4fbac0bd456d8b5ca08613baf4f39aa19194813a3b"
+latest-published-id = "0x86e70d3c74e3ac92eccfbe4fbac0bd456d8b5ca08613baf4f39aa19194813a3b"
 published-version = "1"
