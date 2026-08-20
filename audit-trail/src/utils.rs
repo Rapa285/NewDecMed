@@ -117,23 +117,29 @@ impl Utils {
     }
 
     /// WORKER 2: Rotasi, Upload IPFS, dan Publish ke IOTA
+    /// Parameter berubah: `iota_node_url` → `package_id` karena
+    /// `IotaLogClient::new()` tidak lagi menerima node URL (diambil dari konstanta IOTA_URL).
     pub fn spawn_log_rotation_worker(
-        iota_node_url: String,       // ← dari env var IOTA_NODE_URL
+        package_id: String,         // ← dari env var IOTA_PACKAGE_ID
     ) {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(
                 Duration::from_secs(LOG_ROTATION_INTERVAL_SECS)
             );
-            let iota_client = IotaLogClient::new(iota_node_url).expect("Gagal membuat IotaLogClient");
+
+            let iota_client = IotaLogClient::new(&package_id)
+                .expect("Gagal membuat IotaLogClient");
+
             let mut sequence_number: u64 = 0;
-            let mut prev_block_id: Option<String> = None;
+
+            let mut prev_tx_digest: Option<String> = None;
 
             loop {
                 interval.tick().await;
 
                 if let Ok(metadata) = fs::metadata(LOG_FILE_PATH).await {
                     if metadata.len() == 0 {
-                        continue; // file kosong, skip
+                        continue;
                     }
                 } else {
                     continue;
@@ -146,16 +152,14 @@ impl Utils {
                     timestamp.timestamp()
                 );
 
-                // ── 1. Rename file (atomic) ───────────────────────────────────
+                // ── 1. Rename file (atomic) ───────────────────────────────────────
                 if let Err(e) = fs::rename(LOG_FILE_PATH, &temp_file_path).await {
                     eprintln!("[rotation] gagal rename file log: {e}");
                     continue;
                 }
                 println!("[rotation] log dirotasi: {temp_file_path}");
 
-                // ── 2. Hitung hash file SEBELUM upload ────────────────────────
-                // Ini yang menutup window of vulnerability secara partial:
-                // hash tercatat sebelum file dikirim ke mana pun
+                // ── 2. Hash file SEBELUM upload ───────────────────────────────────
                 let file_hash = match IotaLogClient::hash_file(&temp_file_path).await {
                     Ok(h) => h,
                     Err(e) => {
@@ -164,7 +168,7 @@ impl Utils {
                     }
                 };
 
-                // ── 3. Upload ke IPFS ─────────────────────────────────────────
+                // ── 3. Upload ke IPFS ─────────────────────────────────────────────
                 let cid = match Self::add_file_to_ipfs(&temp_file_path).await {
                     Ok(cid) => {
                         println!("[rotation] upload IPFS berhasil. CID: {cid}");
@@ -172,8 +176,6 @@ impl Utils {
                     }
                     Err(e) => {
                         eprintln!("[rotation] gagal upload IPFS: {e:?}");
-                        // Tetap lanjut kirim ke IOTA meski IPFS gagal
-                        // agar hash file tetap tercatat
                         "ipfs_upload_failed".to_string()
                     }
                 };
@@ -185,10 +187,13 @@ impl Utils {
                     rotation_timestamp: timestamp,
                     ipfs_cid: cid,
                     file_hash,
-                    prev_block_id: prev_block_id.clone(),
-                    final_record_hash: String::new(),
+                    // Diisi oleh log writer worker; untuk sementara kosong
+                    // TODO: isi dari state yang dishare dengan AuditLogger
                     first_record_hash: String::new(),
+                    final_record_hash: String::new(),
                     record_count: 0,
+                    // Gunakan nama field yang benar: prev_tx_digest
+                    prev_tx_digest: prev_tx_digest.clone(),
                 };
 
                 match iota_client.publish_metadata(&iota_metadata).await {
@@ -197,15 +202,19 @@ impl Utils {
                             "[rotation] IOTA OK — Object ID: {} | TX: {}",
                             result.object_id, result.tx_digest
                         );
-                        // Simpan object_id untuk file log berikutnya (chain of custody)
-                        prev_object_id = Some(result.object_id);
+                        // Simpan tx_digest (bukan object_id) untuk chain of custody,
+                        // karena field penghubung antar batch adalah prev_tx_digest
+                        prev_tx_digest = Some(result.tx_digest);
+                        sequence_number += 1;
                     }
                     Err(e) => {
                         eprintln!("[rotation] gagal publish ke IOTA: {e:?}");
+                        // sequence_number tidak di-increment jika publish gagal
+                        // agar tidak ada gap di log_sequence_number on-chain
                     }
                 }
 
-                // ── 5. Hapus file lokal setelah semua berhasil ────────────────
+                // ── 5. Hapus file lokal setelah semua selesai ─────────────────────
                 if let Err(e) = fs::remove_file(&temp_file_path).await {
                     eprintln!("[rotation] gagal hapus file temp: {e}");
                 }
@@ -283,35 +292,5 @@ impl Utils {
 
         Ok(calculated_hash == record.record_hash)
     }
-
-    // pub fn verify_chain(
-    //     records: &[AuditRecord],
-    // ) -> Result<bool, serde_json::Error> {
-    //     let mut expected_previous_hash: Option<String> = None;
-
-    //     for record in records {
-    //         // Periksa hubungan dengan record sebelumnya.
-    //         if record.prev_record_hash != expected_previous_hash {
-    //             return Ok(false);
-    //         }
-
-    //         // Hitung ulang hash record.
-    //         let calculated_hash = calculate_record_hash(
-    //             &record.record_id,
-    //             &record.timestamp,
-    //             record.prev_record_hash.as_deref(),
-    //             &record.event,
-    //         )?;
-
-    //         // Periksa integritas record.
-    //         if calculated_hash != record.record_hash {
-    //             return Ok(false);
-    //         }
-
-    //         expected_previous_hash = Some(record.record_hash.clone());
-    //     }
-
-    //     Ok(true)
-    // }
 
 }

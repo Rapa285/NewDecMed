@@ -1,45 +1,22 @@
-module ats::audit_log;
+module ats::audit_log {
+    use std::string::String;
+    use iota::object::{Self, UID};
+    use iota::transfer;
+    use iota::tx_context::TxContext;
 
-public struct AuditLogMetadata has key {
-    id: UID,
+    public struct LogRecord has key {
+        id: UID,
+        json_data: String,
+    }
 
-    version: vector<u8>,
-    log_sequence_number: u64,
-    rotation_timestamp: u64,
-
-    ipfs_cid: vector<u8>,
-    file_hash: vector<u8>,
-
-    first_record_hash: vector<u8>,
-    final_record_hash: vector<u8>,
-
-    record_count: u64,
-
-    prev_object_id: vector<u8>,
-}
-
-public entry fun create_audit_log(
-    version: vector<u8>,
-    log_sequence_number: u64,
-    rotation_timestamp: u64,
-    ipfs_cid: vector<u8>,
-    file_hash: vector<u8>,
-    first_record_hash: vector<u8>,
-    final_record_hash: vector<u8>,
-    record_count: u64,
-    prev_object_id: vector<u8>,
-    ctx: &mut TxContext,
-) {
-    transfer::share_object(AuditLogMetadata {
-        id: object::new(ctx),
-        version,
-        log_sequence_number,
-        rotation_timestamp,
-        ipfs_cid,
-        file_hash,
-        first_record_hash,
-        final_record_hash,
-        record_count,
-        prev_object_id,
-    });
+    public entry fun create_log(json_data: String, ctx: &mut TxContext) {
+        // 1. New LogRecord
+        let record = LogRecord {
+            id: object::new(ctx),
+            json_data,
+        };
+        
+        // 2. Freeze object
+        transfer::freeze_object(record);
+    }
 }

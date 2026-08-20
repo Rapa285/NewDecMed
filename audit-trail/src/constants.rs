@@ -11,3 +11,4 @@ pub const LOG_DIR: &str = "./logs";
 pub const LOG_FILE_PATH: &str = "./logs/audit_logs.log";
 
 pub const IOTA_KEY_PAIR: &str = "iotaprivkey1qp5wft4pg7rf8prm2ddd3y38zstknqjy7jmkp02gzf0lwsdzurycqt4v3d6";
+pub const ATS_PACKAGE_ID: &str = "0x69c826e6adcec1efdcaab1034fd45afb4faca267da6717059b1b5bde6fb93ee6";
