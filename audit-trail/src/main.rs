@@ -5,6 +5,7 @@ mod audit_error;
 mod macros;
 mod utils;
 mod iota_client;
+mod iota_utils;
 mod audit;
 
 use std::{env, sync::Arc};
@@ -15,11 +16,10 @@ use axum::{
 use tokio::fs;
 use handlers::Handlers;
 use utils::Utils;
-use tokio::sync::Mutex;
 use tokio::sync::mpsc; 
 use crate::{
     constants::{LOG_DIR,IOTA_URL},
-    types::AuditRecord,
+    types::AuditEvent,
     audit::AuditLogger,
 };
 

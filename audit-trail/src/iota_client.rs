@@ -17,7 +17,7 @@ use tokio::fs;
 
 use crate::audit_error::AuditError;
 use crate::constants::IOTA_KEY_PAIR;
-use crate::utils::Utils;
+use crate::iota_utils::IotaUtils;
 
 // ── Metadata struct ───────────────────────────────────────────────────────────
 
@@ -85,8 +85,8 @@ impl IotaLogClient {
         let metadata_json = serde_json::to_string(metadata)
             .map_err(|e| anyhow::anyhow!("gagal serialize metadata: {e}"))?;
 
-        // 2. Bangun IOTA client via Utils
-        let iota_client = Utils::get_iota_client().await?;
+        // 2. Bangun IOTA client via IotaUtils
+        let iota_client = IotaUtils::get_iota_client().await?;
         let sender: iota_types::base_types::IotaAddress = (&self.key_pair.public()).into();
 
         // 3. Susun call argument — json_data bertipe String di Move,
@@ -98,27 +98,27 @@ impl IotaLogClient {
             ),
         ];
 
-        // 4. Build ProgrammableTransaction via Utils::construct_pt
+        // 4. Build ProgrammableTransaction via IotaUtils::construct_pt
         //    Module: audit_log | Fungsi: create_log
         let module = Identifier::from_str("audit_log")
             .map_err(|e| anyhow::anyhow!("nama module tidak valid: {e}"))?;
 
-        let pt = Utils::construct_pt(
-            "create_log",
+        let pt = IotaUtils::construct_pt(
+            "create_log".to_string(),
             self.package_id,
             module,
             vec![],     // tidak ada type argument
             call_args,
         )?;
 
-        // 5. Reserve gas via Utils (gas station / sponsored tx)
+        // 5. Reserve gas via IotaUtils (gas station / sponsored tx)
         let (sponsor_address, reservation_id, gas_coins) =
-            Utils::reserve_gas(10_000_000, 60).await?;
+            IotaUtils::reserve_gas(10_000_000, 60).await?;
 
         // 6. Construct sponsored TransactionData
-        let ref_gas_price = Utils::get_ref_gas_price(&iota_client).await?;
+        let ref_gas_price = IotaUtils::get_ref_gas_price(&iota_client).await?;
 
-        let tx_data = Utils::construct_sponsored_tx_data(
+        let tx_data = IotaUtils::construct_sponsored_tx_data(
             sender,
             gas_coins,
             pt,
@@ -132,8 +132,8 @@ impl IotaLogClient {
         let signature = Signature::new_secure(&intent_msg, &self.key_pair);
         let tx = Transaction::from_data(tx_data, vec![signature]);
 
-        let exec_response = Utils::execute_tx(tx.into_inner(), reservation_id).await?;
-        Utils::handle_error_execute_tx(exec_response.clone())?;
+        let exec_response = IotaUtils::execute_tx(tx.into_inner(), reservation_id).await?;
+        IotaUtils::handle_error_execute_tx(exec_response.clone())?;
 
         // 8. Ekstrak tx_digest dan object_id LogRecord yang baru di-freeze
         let effects = exec_response
@@ -162,7 +162,7 @@ impl IotaLogClient {
         &self,
         limit: Option<usize>,
     ) -> Result<Vec<LogRecordOnChain>, AuditError> {
-        let iota_client = Utils::get_iota_client().await?;
+        let iota_client = IotaUtils::get_iota_client().await?;
 
         // Filter berdasarkan StructType `<package_id>::audit_log::LogRecord`
         let struct_tag = StructTag {

@@ -2,6 +2,21 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
+use std::fmt::Debug;
+use iota_json_rpc_types::{IotaObjectRef, IotaTransactionBlockEffects};
+use iota_types::{
+    base_types::{IotaAddress},
+};
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct SuccessResponse<T>
+where
+    T: Debug,
+{
+    pub data: T,
+    pub status_code: u16,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UtilIpfsAddResponse {
@@ -10,6 +25,26 @@ pub struct UtilIpfsAddResponse {
     pub name: String,
     pub size: u64,
 }
+
+#[derive(Debug, Deserialize, JsonSchema, Serialize)]
+pub struct ReserveGasResponse {
+    pub error: Option<String>,
+    pub result: Option<ReserveGasResult>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema, Serialize)]
+pub struct ReserveGasResult {
+    pub gas_coins: Vec<IotaObjectRef>,
+    pub reservation_id: u64,
+    pub sponsor_address: IotaAddress,
+}
+
+#[derive(Debug, Deserialize, JsonSchema, Serialize)]
+pub struct ExecuteTxResponse {
+    pub effects: Option<IotaTransactionBlockEffects>,
+    pub error: Option<String>,
+}
+
 
 /// Representasi hasil dari pelaksanaan audit event
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

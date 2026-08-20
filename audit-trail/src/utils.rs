@@ -7,18 +7,15 @@ use tokio::fs::{self, OpenOptions};
 use tokio::io::AsyncWriteExt;
 use tokio::time::Duration;
 use tokio::sync::mpsc::Receiver;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use anyhow::{anyhow, bail, Result, Context};
-use tokio::sync::mpsc::UnboundedReceiver;
 use sha2::{Sha256, Digest};
 
 use crate::{
     constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR, IPFS_BASE_URL}, 
     audit_error::AuditError,
-    types::{AuditRecord, UtilIpfsAddResponse, SignedEvent},
+    types::{AuditRecord, SignedEvent, AuditEvent},
     current_fn,
-    iota_client::{IotaLogClient, IotaLogMetadata, LavaParamsMeta},
+    iota_client::{IotaLogClient, IotaLogMetadata},
 };
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
@@ -87,7 +84,7 @@ impl Utils {
             // Terus berjalan selama channel/queue belum ditutup
             while let Some(record) = rx.recv().await {
                 // 1. Serialisasi ke JSON
-                let mut log_line = match serde_json::to_string(&record) {
+                let log_line = match serde_json::to_string(&record) {
                     Ok(json_str) => json_str + "\n",
                     Err(e) => {
                         eprintln!("Gagal serialisasi log: {}", e);

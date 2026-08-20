@@ -23,6 +23,7 @@ sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-native-tls", "m
 # --- Serialization ---
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+schemars = "0.8"
 
 # --- Error handling ---
 thiserror = "2.0"     # Diperbarui dari 1 mengikuti proxy
@@ -40,6 +41,10 @@ iota-config = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2
 iota-types = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-types" }
 iota-json-rpc-types = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "iota-json-rpc-types" }
 shared-crypto = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05", package = "shared-crypto" }
+move-core-types = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac81a2fdee000bdcde7d390bf62985e05" }
+
+# --- Others ---
+bcs = "0.1.4"
 
 [dev-dependencies]
 tempfile = "3"

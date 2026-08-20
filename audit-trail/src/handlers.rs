@@ -1,24 +1,16 @@
-use reqwest::StatusCode;
 use crate::{
-    constants::LOG_FILE_PATH,
     // types::{ExecuteTxResponse, ReserveGasResponse, SuccessResponse, UtilIpfsAddResponse},
-    types::{AuditRecord, AuditEvent},
-    auth::{verifier::EventVerifier, types::SignedEvent},
+    types::{AuditRecord, SignedEvent},
     utils::Utils
 };
-use uuid::Uuid;
 
 use axum::{extract::State, Json, response::IntoResponse};
 use serde_json::json;
 use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::fs::OpenOptions;
-use tokio::io::AsyncWriteExt;
-use chrono::Utc;
 use tokio::sync::mpsc::Sender;
 
 pub struct Handlers {
-    pub audit_tx: Sender<AuditRecord>,
+    pub audit_tx: Sender<AuditEvent>,
 }
 
 impl Handlers {

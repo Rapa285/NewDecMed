@@ -1,13 +1,12 @@
-use std::path::PathBuf;
 use tokio::fs::OpenOptions;
-use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::io::{AsyncWriteExt};
 use chrono::Utc;
 use uuid::Uuid;
 use std::sync::mpsc::Receiver;
 use crate::types::{AuditEvent, AuditRecord};
 use crate::constants::LOG_FILE_PATH;
 
-struct AuditLogger {
+pub struct AuditLogger {
     rx: Receiver<AuditEvent>,
     prev_record_hash: Option<String>,
 }
@@ -21,7 +20,7 @@ impl AuditLogger {
     }
 
     pub async fn run(mut self) {
-        while let Some(event) = self.rx.recv().await {
+        while let Some(event) = self.rx.recv() {
 
             // 1. Buat AuditRecord menggunakan hash sebelumnya
             let record = match create_audit_record(
