@@ -8,6 +8,8 @@ use iota_types::{
     base_types::IotaAddress,
 };
 
+use crate::iota_client::IotaLogMetadata;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SuccessResponse<T>
 where
@@ -248,4 +250,33 @@ pub enum AuditEventDetails {
         actual_scope: String,
         validation_result: bool,
     },
+}
+
+// ── GET /api/logs ──────────────────────────────────────────────────────────
+
+/// Query params for `GET /api/logs`.
+///
+/// `cursor` is an opaque string (the previous response's `next_cursor`,
+/// which is an IOTA ObjectID in hex form) — pass it back unchanged to get
+/// the next page. Omit it to fetch the first page.
+#[derive(Debug, Deserialize)]
+pub struct GetLogsQueryParams {
+    pub cursor: Option<String>,
+    pub limit: Option<usize>,
+}
+
+/// A single row in the `GET /api/logs` response.
+#[derive(Debug, Serialize)]
+pub struct ApiLogRecord {
+    pub object_id: String,
+    pub metadata: IotaLogMetadata,
+}
+
+/// Response body for `GET /api/logs`. Shape matches what the
+/// `audit-trail-client` (Tauri) app expects.
+#[derive(Debug, Serialize)]
+pub struct GetLogsResponse {
+    pub data: Vec<ApiLogRecord>,
+    pub next_cursor: Option<String>,
+    pub has_next_page: bool,
 }

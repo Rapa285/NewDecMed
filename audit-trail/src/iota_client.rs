@@ -50,6 +50,15 @@ pub struct LogRecordOnChain {
     pub metadata: IotaLogMetadata,
 }
 
+/// Single page of `LogRecordOnChain`s, returned by `list_log_records`.
+/// Mirrors the pagination shape the `audit-trail-client` (Tauri) app expects
+/// from `GET /api/logs`.
+pub struct LogRecordsPage {
+    pub records: Vec<LogRecordOnChain>,
+    pub next_cursor: Option<ObjectID>,
+    pub has_next_page: bool,
+}
+
 // ── IotaLogClient ─────────────────────────────────────────────────────────────
 
 pub struct IotaLogClient {
@@ -70,6 +79,17 @@ impl IotaLogClient {
             ))?;
 
         Ok(Self { key_pair, package_id })
+    }
+
+    fn log_record_struct_tag(&self) -> Result<StructTag, AuditError> {
+        Ok(StructTag {
+            address: AccountAddress::from(self.package_id),
+            module: Identifier::new("audit_log")
+                .map_err(|e| anyhow::anyhow!("module identifier tidak valid: {e}"))?,
+            name: Identifier::new("LogRecord")
+                .map_err(|e| anyhow::anyhow!("struct name identifier tidak valid: {e}"))?,
+            type_params: vec![],
+        })
     }
 
     // ── publish_metadata ──────────────────────────────────────────────────────
@@ -166,15 +186,7 @@ impl IotaLogClient {
         limit: Option<usize>,
     ) -> Result<Vec<LogRecordOnChain>, AuditError> {
         let iota_client = IotaUtils::get_iota_client().await?;
-
-        let struct_tag = StructTag {
-            address: AccountAddress::from(self.package_id),
-            module: Identifier::new("audit_log")
-                .map_err(|e| anyhow::anyhow!("module identifier tidak valid: {e}"))?,
-            name: Identifier::new("LogRecord")
-                .map_err(|e| anyhow::anyhow!("struct name identifier tidak valid: {e}"))?,
-            type_params: vec![],
-        };
+        let struct_tag = self.log_record_struct_tag()?;
 
         let query = IotaObjectResponseQuery {
             filter: Some(IotaObjectDataFilter::StructType(struct_tag)),
@@ -235,6 +247,56 @@ impl IotaLogClient {
         }
 
         Ok(results)
+    }
+
+    /// Fetch a single page of `LogRecord` objects, honoring an
+    /// external opaque cursor. Used by `GET /api/logs` so the client
+    /// can page through results instead of the server always
+    /// re-walking from the start (as `get_log_records` does).
+    pub async fn list_log_records(
+        &self,
+        cursor: Option<ObjectID>,
+        limit: usize,
+    ) -> Result<LogRecordsPage, AuditError> {
+        let iota_client = IotaUtils::get_iota_client().await?;
+        let struct_tag = self.log_record_struct_tag()?;
+
+        let query = IotaObjectResponseQuery {
+            filter: Some(IotaObjectDataFilter::StructType(struct_tag)),
+            options: Some(IotaObjectDataOptions {
+                show_content: true,
+                show_type: true,
+                show_owner: true,
+                ..Default::default()
+            }),
+        };
+
+        let page = iota_client
+            .read_api()
+            .get_owned_objects(
+                iota_types::base_types::IotaAddress::ZERO,
+                query,
+                cursor,
+                Some(limit),
+            )
+            .await
+            .map_err(|e| anyhow::anyhow!("gagal query LogRecord dari IOTA: {e}"))?;
+
+        let mut records = Vec::with_capacity(page.data.len());
+        for response in &page.data {
+            let object_data: &IotaObjectData = response
+                .data
+                .as_ref()
+                .ok_or_else(|| anyhow::anyhow!("object data kosong di response"))?;
+
+            records.push(Self::parse_log_record(object_data)?);
+        }
+
+        Ok(LogRecordsPage {
+            records,
+            next_cursor: page.next_cursor,
+            has_next_page: page.has_next_page,
+        })
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────
