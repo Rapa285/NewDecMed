@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+
+@layer base {
+	button {
+		@apply flex max-w-max items-center justify-center gap-2 rounded-md;
+		@apply cursor-pointer;
+	}
+
+	input {
+		@apply rounded-md border px-3 py-1 outline-0 focus:ring-2;
+	}
+
+	label {
+		@apply font-medium;
+	}
+
+	table {
+		@apply w-full border-collapse text-sm;
+	}
+
+	th {
+		@apply sticky top-0 border-b border-zinc-200 bg-zinc-50 px-3 py-2 text-left text-zinc-500;
+	}
+
+	td {
+		@apply border-b border-zinc-100 px-3 py-2 align-top;
+	}
+}
+
+@layer components {
+	.border-light {
+		@apply border border-zinc-200;
+	}
+
+	.btn {
+		@apply bg-[radial-gradient(circle,_rgba(0,0,0,1)_0%,_rgba(66,64,64,1)_100%)];
+		@apply text-white;
+		@apply px-4 py-1;
+	}
+
+	.btn-cancel {
+		@apply border border-zinc-200 bg-zinc-100;
+		@apply px-4 py-1;
+	}
+
+	.container-input-text {
+		@apply flex flex-col gap-1;
+	}
+
+	.error-input-text {
+		@apply text-sm font-medium text-red-500;
+	}
+
+	.input-base {
+		@apply border-zinc-200 focus:ring-zinc-300;
+	}
+
+	.pill {
+		@apply max-w-max rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-500;
+	}
+
+	.pill-loading {
+		@apply border-zinc-800 text-zinc-800;
+	}
+
+	.pill-error {
+		@apply border-red-300 bg-red-50 text-red-500;
+	}
+
+	.mono {
+		@apply font-mono text-xs;
+	}
+}
