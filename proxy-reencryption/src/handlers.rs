@@ -110,7 +110,7 @@ impl Handlers {
                     data_size: 0, // ukuran tidak tersedia di titik ini
                 },
             };
-            state.ats_client.send_event_nonblocking(event, "create_medical_record");
+            state.ats_client.send_event(event, "create_medical_record");
         }
 
         let medical_metadata = MedicalMetadata {
@@ -690,7 +690,7 @@ impl Handlers {
                     channel_encryption: "TLS".to_string(),
                 },
             };
-            state.ats_client.send_event_nonblocking(event, "get_nonce");
+            state.ats_client.send_event(event, "get_nonce");
         }
 
         Ok(Utils::build_success_response(nonce, StatusCode::OK))
@@ -841,7 +841,7 @@ impl Handlers {
                     ttl_remaining: update_keys_duration.unwrap_or(read_keys_duration) as i64,
                 },
             };
-            state.ats_client.send_event_nonblocking(event, "store_keys");
+            state.ats_client.send_event(event, "store_keys");
         }
 
         Ok(Utils::build_success_response(res_data, StatusCode::OK))

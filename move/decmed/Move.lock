@@ -52,7 +52,7 @@ latest-published-id = "0xa5b53b6811fc8b532321f7d6ef2f02ae898d1b9d1d7705886423911
 published-version = "1"
 
 [env.local-vps]
-chain-id = "8f9fee67"
-original-published-id = "0x86e70d3c74e3ac92eccfbe4fbac0bd456d8b5ca08613baf4f39aa19194813a3b"
-latest-published-id = "0x86e70d3c74e3ac92eccfbe4fbac0bd456d8b5ca08613baf4f39aa19194813a3b"
+chain-id = "39877c5f"
+original-published-id = "0x35c19f44d6c2dd5ec38d8c6eb5f9dd7e0f83328649b30d0ef406e2548bef3ae3"
+latest-published-id = "0x35c19f44d6c2dd5ec38d8c6eb5f9dd7e0f83328649b30d0ef406e2548bef3ae3"
 published-version = "1"

@@ -109,14 +109,19 @@ impl MoveCall {
         )
         .context(current_fn!())?;
 
+
+
         let (sponsor_account, reservation_id, gas_coins) =
-            Utils::reserve_gas(NANOS_PER_IOTA * 2, 10)
+            Utils::reserve_gas(NANOS_PER_IOTA * 2, 60)
                 .await
                 .context(current_fn!())?;
+
+
         let ref_gas_price = Utils::get_ref_gas_price(&iota_client)
             .await
             .context(current_fn!())?;
 
+        
         let tx_data = Utils::construct_sponsored_tx_data(
             sender,
             gas_coins,
@@ -125,6 +130,8 @@ impl MoveCall {
             ref_gas_price,
             sponsor_account,
         );
+
+
 
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);

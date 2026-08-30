@@ -14,7 +14,6 @@ use axum::{
     Router,
 };
 use tokio::fs;
-use tower_http::cors::CorsLayer;
 use handlers::Handlers;
 use utils::Utils;
 use tokio::sync::mpsc; 
@@ -46,10 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 4. Jalankan worker dari utils.rs
     Utils::spawn_log_rotation_worker(ATS_PACKAGE_ID.to_string()); // Melakukan rotasi dan upload berkala
 
-    // 5. CORS — diperlukan agar client desktop (Tauri webview / dev server
-    //    di localhost:1420) bisa memanggil endpoint ini. Persempit origin
-    //    di production jika perlu (mis. hanya izinkan "tauri://localhost").
-    let cors = CorsLayer::permissive();
 
     // 6. Setup Router Axum
     let app = Router::new()
@@ -57,8 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(app_handlers)
         // GET /api/logs tidak butuh Handlers state, jadi dipasang
         // terpisah dari router ber-state di atas.
-        .route("/api/logs", get(Handlers::get_logs))
-        .layer(cors);
+        .route("/api/logs", get(Handlers::get_logs));
 
     let port = env::var("PORT")?;
 

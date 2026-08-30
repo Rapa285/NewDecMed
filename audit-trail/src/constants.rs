@@ -12,4 +12,4 @@ pub const LOG_FILE_PATH: &str = "./logs/audit_logs.log";
 
 pub const IOTA_KEY_PAIR: &str = "iotaprivkey1qp5wft4pg7rf8prm2ddd3y38zstknqjy7jmkp02gzf0lwsdzurycqt4v3d6";
 pub const IOTA_ADDRESS: &str = "0xa0dd40a6c82863f7fff88b90555371e4ee52c9c94dcaf101cc08145f14650f0c";
-pub const ATS_PACKAGE_ID: &str = "0x809a572837d2adb6c3432ff81e7a56615b5a0ea23c50151606c53e02eaed27fa";
+pub const ATS_PACKAGE_ID: &str = "0x772274afaf9d239e75bbe76c16354e278fa1909f8f16744d52cb2042ea8e325a";
