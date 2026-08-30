@@ -1,9 +1,8 @@
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use anyhow::{Context, Result, anyhow};
-
+use super::types::{AuditEvent,SignedAuditEvent};
+use super::constants::ATS_ENDPOINT;
 
 
 // ── ATSClient ─────────────────────────────────────────────────────────────────
@@ -12,17 +11,11 @@ pub struct ATSClient {
     signing_key: SigningKey,
     pub public_key: VerifyingKey,
     req_client: Client,
-    endpoint: String,
 }
 
 impl ATSClient {
-    const DEFAULT_ENDPOINT: &'static str = "http://localhost:3000/api/events";
 
     pub fn new() -> Self {
-        Self::with_endpoint(Self::DEFAULT_ENDPOINT)
-    }
-
-    pub fn with_endpoint(endpoint: &str) -> Self {
         let mut csprng = OsRng;
         let signing_key = SigningKey::generate(&mut csprng);
         let public_key = signing_key.verifying_key();
@@ -30,16 +23,15 @@ impl ATSClient {
             signing_key,
             public_key,
             req_client: Client::new(),
-            endpoint: endpoint.to_string(),
         }
     }
 
     pub fn send_event(&self, event: AuditEvent, label: &'static str) {
-        // Salin data yang dibutuhkan agar memiliki ownership
+
         let signing_key_bytes = self.signing_key.to_bytes();
         let pubkey_bytes = self.public_key.to_bytes();
         let client = self.req_client.clone();
-        let endpoint = self.endpoint.clone();
+        let endpoint = ATS_ENDPOINT;
 
         tokio::spawn(async move {
             let signing_key = SigningKey::from_bytes(&signing_key_bytes);
@@ -66,7 +58,7 @@ impl ATSClient {
                 println!("[ATS Worker] Akan mengirim event ke endpoint '{}':\n{}", endpoint, json_debug);
             }
 
-            match client.post(&endpoint).json(&signed).send().await {
+            match client.post(endpoint).json(&signed).send().await {
                 Ok(res) if !res.status().is_success() => {
                     let s = res.status();
                     let b = res.text().await.unwrap_or_default();

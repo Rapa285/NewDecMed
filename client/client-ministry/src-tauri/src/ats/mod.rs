@@ -1,2 +1,6 @@
 pub mod ats;
-pub use ats::{ATSClient, AuditEvent, AuditEventDetails, AuditOutcome};
+pub mod types;
+pub mod constants;
+
+pub use ats::ATSClient;
+pub use types::{AuditEvent, AuditOutcome, AuditEventDetails};

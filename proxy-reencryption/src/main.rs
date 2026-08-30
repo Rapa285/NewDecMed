@@ -7,6 +7,7 @@ mod proxy_error;
 mod tes_error;
 mod types;
 mod utils;
+
 // module ATS
 mod ats;
 
@@ -75,13 +76,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
     let move_call = MoveCall { decmed_package };
 
-
-    // ATS
-    let ats_endpoint = std::env::var("ATS_ENDPOINT")
-        .unwrap_or_else(|_| "http://localhost:3000/api/events".to_string());
-
     let shared_state = Arc::new(AppState {
-        ats_client: ATSClient::with_endpoint(&ats_endpoint),  // tambahan ATS
+        ats_client: ATSClient::new(),  // tambahan ATS
         global_admin_iota_address,
         global_admin_iota_key_pair,
         jwt_ecdsa_key_pair,

@@ -1,3 +1,6 @@
+use serde::{Serialize, Deserialize};
+
+// ── Tipe data publik ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedAuditEvent {
