@@ -675,7 +675,7 @@ impl Handlers {
             )
             .context(current_fn!())?;
         
-        // ── Audit: permintaan nonce ───────────────────────────────────────────────────
+        // ── Audit: EV - Redis Read ───────────────────────────────────────────────────
         {
             let event = AuditEvent {
                 source_component: "proxy-reencryption".to_string(),
@@ -824,7 +824,7 @@ impl Handlers {
             "access_token_update": hospital_personnel_access_token_update,
         });
 
-        // ── Audit: penyimpanan kunci PRE ─────────────────────────────────────────────
+        // ── Audit: Redis ─────────────────────────────────────────────
         {
             let event = AuditEvent {
                 source_component: "proxy-reencryption".to_string(),

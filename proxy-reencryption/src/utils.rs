@@ -282,6 +282,25 @@ impl Utils {
             .json::<ExecuteTxResponse>()
             .await
             .context(current_fn!())?;
+        
+        // ── Audit: EV8 - IOTA TX ───────────────────────────────────────────────────
+        let data = tx.getData();
+        println!("Audit: IOTA tx data: {:?}", data);
+        {
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor_id: "tx.data().sender().to_string()".to_string(),
+                target_object: "blockchain_transaction".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "IOTA_TRANSACTION".to_string(),
+                details: AuditEventDetails::IotaTransaction {
+                    transaction_digest: "0x_placeholder_digest_12345".to_string(),
+                    payload_hash: "0x_placeholder_payload_hash_abcde".to_string(),
+                    network_confirmation_status: "confirmed".to_string(),
+                },
+            };
+            state.ats_client.send_event(event, "iota_transaction");
+        }
 
         Ok(ex_tx_res)
     }
