@@ -20,7 +20,7 @@ use chrono::{DateTime, Utc};
 
 // Revisi
 use iota_types::base_types::IotaAddress;
-use iota_types::crypto::{Signature as IotaSignature, SignatureScheme};
+use iota_types::crypto::{SignatureScheme,EncodeDecodeBase64,Signature};
 use shared_crypto::intent::{Intent, IntentMessage};
 use std::str::FromStr;
 

@@ -145,6 +145,27 @@ pub enum AuditActionType {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AuditEvent {
+    pub source_component: AuditSourceComponent,
+    pub actor: String,
+    pub target_object: String,
+    pub outcome: AuditOutcome,
+    pub action_type: AuditActionType,
+    pub details: AuditEventDetails,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuditRecord {
+    pub record_id: Uuid,
+    pub timestamp: DateTime<Utc>,
+    pub prev_record_hash: Option<String>,
+    pub record_hash: String,
+    
+    #[serde(flatten)] 
+    pub event: AuditEvent,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "event_type")]
 pub enum AuditEventDetails {
     #[serde(rename = "EV1")]
@@ -262,16 +283,6 @@ pub enum AuditEventDetails {
         rejection_reason: Option<String>,
         middleware_layer: String,
     },
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AuditEvent {
-    pub source_component: AuditSourceComponent,
-    pub actor: String,
-    pub target_object: String,
-    pub outcome: AuditOutcome,
-    pub action_type: AuditActionType,
-    pub details: AuditEventDetails,
 }
 
 impl AuditEventDetails {

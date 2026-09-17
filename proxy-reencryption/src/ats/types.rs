@@ -2,11 +2,21 @@ use serde::{Serialize, Deserialize};
 
 // ── Tipe data publik ──────────────────────────────────────────────────────────
 
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct SignedAuditEvent {
+//     pub payload: String,
+//     pub signature: String,
+//     pub iota_address: String,
+// }
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedAuditEvent {
-    pub payload: String,
-    pub signature: String,
-    pub iota_address: String,
+    pub enc_key: String,       // base64: AES key terenkripsi
+    pub ciphertext: String,    // base64: payload terenkripsi
+    pub nonce: String,         // base64: nonce AES-GCM
+    pub signature: String,     // hex: sign(ciphertext_bytes)
+    pub public_key: String,    // hex: verifying key aktor
+    pub iota_address: String,  // untuk lookup binding
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
