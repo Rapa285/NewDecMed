@@ -11,8 +11,10 @@ use crate::{
     utils::{
         aes_encrypt_custom_key, compute_pre_keys, compute_seed_from_seed_words,
         encode_activation_key_from_keys_entry, generate_iota_keys_ed, parse_keys_entry,
-        serde_serialize_to_base64, sha_hash,
+        serde_serialize_to_base64, sha_hash,get_iota_key_pair_from_keys_entry,get_iota_address_from_keys_entry,
     },
+    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
@@ -81,6 +83,26 @@ pub async fn signin(
         .context(current_fn!())?;
 
     if !is_registered {
+        // ── Audit: EV1 - Authentication (Failure: Account Not Found) ─────────────────────
+        {
+            let actor = hospital_personnel_iota_address.to_string();
+            let event = AuditEvent {
+                source_component: "hospital-client".to_string(),
+                actor: actor.clone(),
+                target_object: actor.clone(),
+                outcome: AuditOutcome::Failure,
+                action_type: "AUTHENTICATION".to_string(),
+                details: AuditEventDetails::Authentication {
+                    auth_method: "SeedWords_PIN".to_string(),
+                    authentication_result: "Failed: Account not found".to_string(),
+                    failed_attempt_count: 1,
+                    device_fingerprint: "tauri_desktop_app".to_string(),
+                },
+            };
+            state.ats_client.send_event(event, actor_address, actor_key_pair,"signin");
+        }
+        // ──────────────────────────────────────────────────────────────────────────────────
+
         return Err(HospitalError::Anyhow(anyhow!("Account not found")));
     }
 
@@ -105,8 +127,31 @@ pub async fn signin(
         })
     }
 
+    let actor_key_pair = get_iota_key_pair_from_keys_entry(&keys_entry, pin)?;
+    let actor_address  = get_iota_address_from_keys_entry(&keys_entry)?;
+
     // drop SigninState form state
     state.signin_state.pin = None;
+
+    // ── Audit: EV1 - Authentication (Success) ─────────────────────────────────────────
+    {
+        let actor = hospital_personnel_iota_address.to_string();
+        let event = AuditEvent {
+            source_component: "hospital-client".to_string(),
+            actor: actor.clone(),
+            target_object: actor.clone(),
+            outcome: AuditOutcome::Success,
+            action_type: "SIGNIN".to_string(),
+            details: AuditEventDetails::Authentication {
+                auth_method: "SeedWords_PIN".to_string(),
+                authentication_result: "Success".to_string(),
+                failed_attempt_count: 0,
+                device_fingerprint: "tauri_desktop_app".to_string(),
+            },
+        };
+        state.ats_client.send_event(event, actor_address, actor_key_pair,"signin",);
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
 
     Ok(SuccessResponse {
         status: ResponseStatus::Success,

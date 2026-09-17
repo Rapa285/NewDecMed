@@ -7,10 +7,11 @@ use iota_types::{
 };
 
 use crate::{
+    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
     client_error::ClientError,
     constants::GAS_BUDGET,
     current_fn,
-    types::{DecmedPackage, MoveHospital},
+    types::{AppState, DecmedPackage, MoveHospital},
     utils::{
         construct_capability_call_arg, construct_pt, construct_shared_object_call_arg,
         construct_sponsored_tx_data, execute_tx, get_iota_client, get_ref_gas_price,
@@ -55,6 +56,7 @@ impl MoveCall {
 
     pub async fn create_activation_key(
         &self,
+        state: &AppState,
         compound_activation_key: String,
         hospital_admin_id: String,
         hospital_admin_metadata: String,
@@ -62,7 +64,7 @@ impl MoveCall {
         hospital_name: String,
         sender: IotaAddress,
         sender_key_pair: IotaKeyPair,
-    ) -> Result<(), ClientError> {
+    ) -> Result<String, ClientError> {
         let iota_client = get_iota_client().await.context(current_fn!())?;
         let pt = construct_pt(
             String::from("create_activation_key"),
@@ -87,6 +89,27 @@ impl MoveCall {
         let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA, 10)
             .await
             .context(current_fn!())?;
+
+        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        {
+            let requester = sender.to_string();
+
+            let event = AuditEvent {
+                source_component: "ministry-client".to_string(),
+                actor: requester.clone(),
+                target_object: "IOTA Gas Station".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+                details: AuditEventDetails::GasSponsorshipRequest {
+                    requested_gas_budget: NANOS_PER_IOTA,
+                    requester_id: requester,
+                },
+            };
+            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+        }
+        // ──────────────────────────────────────────────────────────────────────────────────
+
+
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
             .context(current_fn!())?;
@@ -103,13 +126,23 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = execute_tx(tx, reservation_id)
+        let response = execute_tx(state, tx, reservation_id)
             .await
             .context(current_fn!())?;
 
-        handle_error_execute_tx(response).context(current_fn!())?;
+        handle_error_execute_tx(response.clone()).context(current_fn!())?;
 
-        Ok(())
+        // Ambil tx_digest dari effects
+        let tx_digest = response
+            .effects
+            .as_ref()
+            .map(|e| {
+                use iota_json_rpc_types::IotaTransactionBlockEffectsAPI;
+                e.transaction_digest().to_string()
+            })
+            .unwrap_or_else(|| "unknown".to_string());
+
+        Ok(tx_digest)
     }
 
     /// ## Returns:
@@ -152,13 +185,14 @@ impl MoveCall {
 
     pub async fn update_activation_key(
         &self,
+        state: &AppState,
         compound_activation_key: String,
         hospital_admin_id: String,
         hospital_admin_metadata: String,
         hospital_id: String,
         sender: IotaAddress,
         sender_key_pair: IotaKeyPair,
-    ) -> Result<(), ClientError> {
+    ) -> Result<String, ClientError> {
         let iota_client = get_iota_client().await.context(current_fn!())?;
         let pt = construct_pt(
             String::from("update_activation_key"),
@@ -182,6 +216,26 @@ impl MoveCall {
         let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA, 10)
             .await
             .context(current_fn!())?;
+
+        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        {
+            let requester = sender.to_string();
+
+            let event = AuditEvent {
+                source_component: "ministry-client".to_string(),
+                actor: requester.clone(),
+                target_object: "IOTA Gas Station".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+                details: AuditEventDetails::GasSponsorshipRequest {
+                    requested_gas_budget: NANOS_PER_IOTA,
+                    requester_id: requester,
+                },
+            };
+            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+        }
+        // ──────────────────────────────────────────────────────────────────────────────────
+
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
             .context(current_fn!())?;
@@ -198,12 +252,22 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = execute_tx(tx, reservation_id)
+        let response = execute_tx(state, tx, reservation_id)
             .await
             .context(current_fn!())?;
 
-        handle_error_execute_tx(response).context(current_fn!())?;
+        handle_error_execute_tx(response.clone()).context(current_fn!())?;
 
-        Ok(())
+        // Ambil tx_digest dari effects
+        let tx_digest = response
+            .effects
+            .as_ref()
+            .map(|e| {
+                use iota_json_rpc_types::IotaTransactionBlockEffectsAPI;
+                e.transaction_digest().to_string()
+            })
+            .unwrap_or_else(|| "unknown".to_string());
+
+        Ok(tx_digest)
     }
 }

@@ -17,7 +17,7 @@ use std::str::FromStr;
 use tokio::fs;
 
 use crate::audit_error::AuditError;
-use crate::constants::IOTA_KEY_PAIR;
+use crate::constants::{IOTA_KEY_PAIR,AUDIT_LOG_STORE_OBJECT_ID,AUDIT_LOG_STORE_INITIAL_SHARED_VERSION};
 use crate::iota_utils::IotaUtils;
 
 // ── Metadata struct ───────────────────────────────────────────────────────────
@@ -99,52 +99,29 @@ impl IotaLogClient {
         store_id: ObjectID, // <-- TAMBAHAN: Masukkan Object ID dari AuditLogStore di sini
         metadata: &IotaLogMetadata,
     ) -> Result<PublishResult, AuditError> {
-        // 1. Serialize metadata ke JSON string
         let metadata_json = serde_json::to_string(metadata)
             .map_err(|e| anyhow::anyhow!("gagal serialize metadata: {e}"))?;
 
-        // 2. Bangun IOTA client via IotaUtils
         let iota_client = IotaUtils::get_iota_client().await?;
         let sender: iota_types::base_types::IotaAddress = (&self.key_pair.public()).into();
 
-        // --- PERUBAHAN MULAI DARI SINI ---
+        let store_id = ObjectID::from_str(AUDIT_LOG_STORE_OBJECT_ID)
+            .map_err(|e| anyhow::anyhow!("AUDIT_LOG_STORE_OBJECT_ID tidak valid: {e}"))?;
 
-        // 3a. Ambil data AuditLogStore dari blockchain untuk mendapatkan initial_shared_version
-        let store_obj = iota_client
-            .read_api()
-            .get_object_with_options(
-                store_id,
-                IotaObjectDataOptions::new().with_owner()
-            )
-            .await
-            .map_err(|e| anyhow::anyhow!("Gagal mengambil AuditLogStore RPC: {e}"))?
-            .into_object()
-            .map_err(|e| anyhow::anyhow!("AuditLogStore tidak ditemukan: {e}"))?;
+        let store_arg = IotaUtils::construct_shared_object_call_arg(
+            store_id, 
+            AUDIT_LOG_STORE_INITIAL_SHARED_VERSION, 
+            true
+        );
 
-        // Pastikan objeknya adalah shared object dan ambil initial_shared_version-nya
-        let initial_shared_version = match store_obj.owner {
-            iota_types::object::Owner::Shared { initial_shared_version } => initial_shared_version,
-            _ => return Err(anyhow::anyhow!("AuditLogStore bukan shared object!").into()),
-        };
-
-        // 3b. Encode argument untuk CallArg
         let call_args: Vec<CallArg> = vec![
-            // Argumen 1: AuditLogStore (Shared Object mutabel)
-            CallArg::Object(ObjectArg::SharedObject {
-                id: store_id,
-                initial_shared_version,
-                mutable: true,
-            }),
-            // Argumen 2: json_data (String)
+            store_arg,
             CallArg::Pure(
                 bcs::to_bytes(&metadata_json)
                     .map_err(|e| anyhow::anyhow!("gagal encode argument BCS: {e}"))?,
             ),
         ];
 
-        // --- PERUBAHAN SELESAI ---
-
-        // 4. Build ProgrammableTransaction (Tetap sama)
         let module = Identifier::new("audit_log")
             .map_err(|e| anyhow::anyhow!("nama module tidak valid: {e}"))?;
 
@@ -156,7 +133,6 @@ impl IotaLogClient {
             call_args,
         )?;
 
-        // 5 - 7. Reserve gas, Tx Data, dan Sign (Tetap sama)
         let (sponsor_address, reservation_id, gas_coins) =
             IotaUtils::reserve_gas(10_000_000, 60).await?;
 
@@ -175,31 +151,21 @@ impl IotaLogClient {
         let signature = Signature::new_secure(&intent_msg, &self.key_pair);
         let tx: Transaction = Transaction::from_data(tx_data, vec![signature]);
 
-        // 8. Execute
         let exec_response = IotaUtils::execute_tx(tx, reservation_id).await?;
 
-        let effects_opt = exec_response.effects.clone();
-        let error_opt = exec_response.error.clone();
-
-        if let Some(err) = error_opt {
+        if let Some(err) = exec_response.error {
             return Err(anyhow::anyhow!("execute_tx error: {err}").into());
         }
 
-        let effects = effects_opt
+        let effects = exec_response.effects
             .ok_or_else(|| anyhow::anyhow!("effects tidak tersedia di response"))?;
 
         let tx_digest = effects.transaction_digest().to_string();
 
-        // --- PERUBAHAN DI BAGIAN RETURN ---
-        
-        // Karena kita tidak membuat objek baru, efek "created" akan kosong.
-        // Kita hapus pengecekan effects.created().
-        
         println!(
             "[iota] LogRecord berhasil dimasukkan ke Store {store_id} | TX Digest: {tx_digest}"
         );
 
-        // Kembalikan store_id sebagai object_id, karena log tersimpan di dalamnya
         Ok(PublishResult { 
             object_id: store_id, 
             tx_digest 

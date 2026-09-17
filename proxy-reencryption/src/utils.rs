@@ -2,6 +2,7 @@ use std::{
     fmt::{self, Debug},
     str::FromStr,
     time::SystemTime,
+    sync::Arc,
 };
 
 use anyhow::{anyhow, Context};
@@ -9,12 +10,13 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
+    extract::State,
 };
 use bip39::Mnemonic;
 use chrono::{DateTime, Utc};
 use iota_json_rpc_types::{
     DevInspectResults, IotaObjectData, IotaObjectDataFilter, IotaObjectDataOptions,
-    IotaObjectResponseQuery, IotaTransactionBlockEffectsAPI,
+    IotaObjectResponseQuery, IotaTransactionBlockEffectsAPI, IotaTransactionBlockEffects,
 };
 use iota_keys::key_derive::derive_key_pair_from_path;
 use iota_sdk::{IotaClient, IotaClientBuilder};
@@ -45,7 +47,8 @@ use crate::{
     constants::{GAS_STATION_BASE_URL, IOTA_URL, IPFS_BASE_URL, IPFS_GATEWAY_BASE_URL},
     current_fn,
     proxy_error::ProxyError,
-    types::{ExecuteTxResponse, ReserveGasResponse, SuccessResponse, UtilIpfsAddResponse},
+    types::{ExecuteTxResponse, ReserveGasResponse, SuccessResponse, UtilIpfsAddResponse,AppState},
+    ats::{ATSClient, AuditEvent, AuditEventDetails, AuditOutcome},
 };
 
 pub struct Utils {}
@@ -260,9 +263,14 @@ impl Utils {
     }
 
     pub async fn execute_tx(
+        state: &AppState,
         tx: Envelope<SenderSignedData, EmptySignInfo>,
         reservation_id: u64,
     ) -> Result<ExecuteTxResponse, ProxyError> {
+        let signer_identity = tx.data().intent_message().value.sender().to_string();
+        let payload_hash = tx.digest().to_string();
+        let data = tx.data().clone();
+
         let (tx_base_64, signature_base_64) = tx.to_tx_bytes_and_signatures();
 
         let req_client = reqwest::Client::new();
@@ -282,25 +290,53 @@ impl Utils {
             .json::<ExecuteTxResponse>()
             .await
             .context(current_fn!())?;
-        
+
         // ── Audit: EV8 - IOTA TX ───────────────────────────────────────────────────
-        let data = tx.getData();
-        println!("Audit: IOTA tx data: {:?}", data);
-        {
-            let event = AuditEvent {
-                source_component: "proxy-reencryption".to_string(),
-                actor_id: "tx.data().sender().to_string()".to_string(),
-                target_object: "blockchain_transaction".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "IOTA_TRANSACTION".to_string(),
-                details: AuditEventDetails::IotaTransaction {
-                    transaction_digest: "0x_placeholder_digest_12345".to_string(),
-                    payload_hash: "0x_placeholder_payload_hash_abcde".to_string(),
-                    network_confirmation_status: "confirmed".to_string(),
-                },
+
+        let mut transaction_digest = String::from("unknown");
+        let mut network_confirmation_status = String::from("unknown");
+        let mut is_success = false;
+
+        if let Some(ref effects_enum) = ex_tx_res.effects {
+            let IotaTransactionBlockEffects::V1(ref effects) = effects_enum;
+
+            transaction_digest = effects.transaction_digest.to_string();
+
+            match &effects.status {
+                iota_json_rpc_types::IotaExecutionStatus::Success => {
+                    network_confirmation_status = "confirmed".to_string();
+                    is_success = true;
+                }
+                iota_json_rpc_types::IotaExecutionStatus::Failure { error } => {
+                    network_confirmation_status = format!("failed: {}", error);
+                }
             };
-            state.ats_client.send_event(event, "iota_transaction");
+        } else if let Some(ref err) = ex_tx_res.error {
+            network_confirmation_status = format!("rpc_error: {}", err);
+            println!("Transaksi gagal di tingkat RPC: {}", err);
         }
+
+        // println!("Audit: IOTA tx data: {:?}", data);
+
+        let event = AuditEvent {
+            source_component: "proxy-reencryption".to_string(),
+            actor: "actor".to_string(), // Sesuaikan actor jika ada
+            target_object: "iota_transaction".to_string(),
+            outcome: if is_success {
+                AuditOutcome::Success
+            } else {
+                AuditOutcome::Failure
+            },
+            action_type: "IOTA_TRANSACTION".to_string(),
+            details: AuditEventDetails::IotaTransactionSubmission {
+                transaction_digest,
+                payload_hash,
+                network_confirmation_status,
+                signer_identity,
+            },
+        };
+
+        ATSClient::send_event_from_state(&state, event,"iota_transaction");
 
         Ok(ex_tx_res)
     }

@@ -23,6 +23,7 @@ use crate::{
         process_qr_image, serde_deserialize_from_base64, serde_serialize_to_base64,
         sys_time_to_iso,
     },
+    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
 };
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -180,7 +181,7 @@ pub async fn create_access(
         let data_read = MoveCreateAccessData {
             patient_name: patient_name.clone(),
             patient_iota_address: patient_iota_address.to_string(),
-            access_token: access_token.access_token_read,
+            access_token: access_token.access_token_read.clone(),
             patient_pre_public_key: None,
         };
         let (data_capsule_read, enc_data_read) = encrypt(
@@ -238,6 +239,31 @@ pub async fn create_access(
         )
         .await
         .context(current_fn!())?;
+    
+    // ── Audit: EV3 - Capability Issuance ───────────────────────────────────────────────
+    {
+        let scope = if metadata_update.is_some() {
+            "Read,Update".to_string()
+        } else {
+            "Read".to_string()
+        };
+
+        let event = AuditEvent {
+            source_component: "patient-client".to_string(),
+            actor: patient_iota_address.to_string(),
+            target_object: hospital_personnel_iota_address.to_string(),
+            outcome: AuditOutcome::Success,
+            action_type: "CREATE_ACCESS_CAPABILITY".to_string(),
+            details: AuditEventDetails::CapabilityIssuance {
+                capability_id: access_token.access_token_read.clone(),
+                access_scope: scope,
+                expiry_duration: 3600, // Durasi standar (dalam detik), sesuaikan jika ada variabel durasi spesifik
+                transaction_digest: signature.encode_base64(),
+            },
+        };
+        state.ats_client.send_event(event, actor_address, actor_key_pair,"create_access");
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
 
     Ok(SuccessResponse {
         data: (),
@@ -260,7 +286,7 @@ pub async fn process_qr(
     let (_meta, hp_addr_pub_key) = process_qr_image(&qr_bytes).context(current_fn!())?;
     state.scan_state.hospital_personnel_qr_content = Some(hp_addr_pub_key.clone());
     let (hospital_personnel_iota_address, _) =
-        decode_hospital_personnel_qr(hp_addr_pub_key).context(current_fn!())?;
+        decode_hospital_personnel_qr(hp_addr_pub_key.clone()).context(current_fn!())?;
 
     let (hospital_personnel_public_administrative_data, hospital_name) = state
         .move_call
@@ -276,6 +302,24 @@ pub async fn process_qr(
         hospital_personnel_hospital_name: hospital_name,
         hospital_personnel_name: hospital_personnel_public_administrative_data.name.unwrap(),
     };
+
+    // ── Audit: EV2 - QR Delegation ─────────────────────────────────────────────────────
+    {
+        let event = AuditEvent {
+            source_component: "patient-client".to_string(),
+            actor: patient_iota_address.to_string(),
+            target_object: hospital_personnel_iota_address.clone().to_string(),
+            outcome: AuditOutcome::Success,
+            action_type: "PROCESS_QR_DELEGATION".to_string(),
+            details: AuditEventDetails::QRDelegation {
+                qr_payload_id: hp_addr_pub_key.clone().to_string(),
+                recipient_identity: hospital_personnel_iota_address.clone().to_string(),
+                signature_valid: true,
+            },
+        };
+        state.ats_client.send_event(event, actor_address, actor_key_pair,"process_qr");
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
 
     Ok(SuccessResponse {
         data: res_data,

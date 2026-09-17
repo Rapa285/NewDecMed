@@ -11,7 +11,7 @@ use argon2::{
 };
 use bip39::Mnemonic;
 use iota_json_rpc_types::{
-    DevInspectResults, IotaObjectDataOptions, IotaTransactionBlockEffectsAPI,
+    DevInspectResults, IotaObjectDataOptions, IotaTransactionBlockEffectsAPI,IotaTransactionBlockEffects,
 };
 use iota_keys::key_derive::derive_key_pair_from_path;
 use iota_sdk::{IotaClient, IotaClientBuilder};
@@ -38,7 +38,9 @@ use crate::{
     constants::{IOTA_URL, _IPFS_GATEWAY_BASE_URL},
     current_fn,
     hospital_error::HospitalError,
-    types::{ExecuteTxResponse, KeysEntry, ReserveGasResponse},
+    types::{ExecuteTxResponse, KeysEntry, ReserveGasResponse, AppState},
+    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
@@ -78,37 +80,91 @@ pub async fn reserve_gas(
         .ok_or(anyhow!("Failed to map response body").context(current_fn!()))?)
 }
 
-pub async fn execute_tx(
-    tx: Envelope<SenderSignedData, EmptySignInfo>,
-    reservation_id: u64,
-) -> Result<ExecuteTxResponse, HospitalError> {
-    let (tx_base_64, signature_base_64) = tx.to_tx_bytes_and_signatures();
+    pub async fn execute_tx(
+        state: &AppState,
+        tx: Envelope<SenderSignedData, EmptySignInfo>,
+        reservation_id: u64,
+    ) -> Result<ExecuteTxResponse, HospitalError> {
+        let signer_identity = tx.data().intent_message().value.sender().to_string();
+        let payload_hash = tx.digest().to_string();
+        let data = tx.data().clone();
 
-    let req_client = reqwest::Client::new();
-    let res = req_client
-        .post(format!("{GAS_STATION_BASE_URL}/execute_tx"))
-        .bearer_auth("token")
-        .json(&json!({
-            "reservation_id": reservation_id,
-            "tx_bytes": tx_base_64.encoded(),
-            "user_sig": signature_base_64[0].encoded()
-        }))
-        .send()
-        .await
-        .context(current_fn!())?;
+        let (tx_base_64, signature_base_64) = tx.to_tx_bytes_and_signatures();
 
-    Ok(res
-        .json::<ExecuteTxResponse>()
-        .await
-        .context(current_fn!())?)
-}
+        let req_client = reqwest::Client::new();
+        let res = req_client
+            .post(format!("{}/execute_tx", GAS_STATION_BASE_URL))
+            .bearer_auth("token")
+            .json(&json!({
+                "reservation_id": reservation_id,
+                "tx_bytes": tx_base_64.encoded(),
+                "user_sig": signature_base_64[0].encoded()
+            }))
+            .send()
+            .await
+            .context(current_fn!())?;
+
+        let ex_tx_res = res
+            .json::<ExecuteTxResponse>()
+            .await
+            .context(current_fn!())?;
+
+        // ── Audit: EV8 - IOTA TX ───────────────────────────────────────────────────
+
+        let mut transaction_digest = String::from("unknown");
+        let mut network_confirmation_status = String::from("unknown");
+        let mut is_success = false;
+
+        if let Some(ref effects_enum) = ex_tx_res.effects {
+            let IotaTransactionBlockEffects::V1(ref effects) = effects_enum;
+
+            transaction_digest = effects.transaction_digest.to_string();
+
+            match &effects.status {
+                iota_json_rpc_types::IotaExecutionStatus::Success => {
+                    network_confirmation_status = "confirmed".to_string();
+                    is_success = true;
+                }
+                iota_json_rpc_types::IotaExecutionStatus::Failure { error } => {
+                    network_confirmation_status = format!("failed: {}", error);
+                }
+            };
+        } else if let Some(ref err) = ex_tx_res.error {
+            network_confirmation_status = format!("rpc_error: {}", err);
+            println!("Transaksi gagal di tingkat RPC: {}", err);
+        }
+
+        // println!("Audit: IOTA tx data: {:?}", data);
+
+        let event = AuditEvent {
+            source_component: "hospital-client".to_string(),
+            actor: "actor".to_string(), // Sesuaikan actor jika ada
+            target_object: "iota_transaction".to_string(),
+            outcome: if is_success {
+                AuditOutcome::Success
+            } else {
+                AuditOutcome::Failure
+            },
+            action_type: "IOTA_TRANSACTION".to_string(),
+            details: AuditEventDetails::IotaTransactionSubmission {
+                transaction_digest,
+                payload_hash,
+                network_confirmation_status,
+                signer_identity,
+            },
+        };
+
+        state.ats_client.send_event(event, actor_address, actor_key_pair,"iota_transaction");
+
+        Ok(ex_tx_res)
+    }
 
 pub fn parse_keys_entry(keys_entry: &Vec<u8>) -> Result<KeysEntry, HospitalError> {
     Ok(serde_json::from_slice(keys_entry).context(current_fn!())?)
 }
 
 pub fn generate_64_bytes_seed() -> [u8; 64] {
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
     let mut random_seed = [0u8; 64];
     rng.fill(&mut random_seed);
 

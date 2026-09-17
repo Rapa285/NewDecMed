@@ -8,9 +8,6 @@ use tokio::time::Duration;
 use anyhow::{anyhow, bail, Result, Context};
 use sha2::{Sha256, Digest};
 
-// ← Import ed25519_dalek untuk verifikasi signature
-use ed25519_dalek::{VerifyingKey, Signature, Verifier};
-
 use crate::{
     constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR, IPFS_BASE_URL}, 
     audit_error::AuditError,
@@ -20,6 +17,12 @@ use crate::{
 };
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
+
+// Revisi
+use iota_types::base_types::IotaAddress;
+use iota_types::crypto::{Signature as IotaSignature, SignatureScheme};
+use shared_crypto::intent::{Intent, IntentMessage};
+use std::str::FromStr;
 
 pub struct Utils {}
 
@@ -164,40 +167,36 @@ impl Utils {
         });
     }
 
-    pub fn verify_and_extract_event(signed_payload: SignedEvent) -> Result<AuditEvent> {
-        
-        // 1. Decode Public Key dari Hex ke bentuk byte (32 byte)
-        let pubkey_bytes = hex::decode(&signed_payload.public_key)
-            .context("Format public key bukan hex yang valid")?;
-        
-        let pubkey_array: [u8; 32] = pubkey_bytes.try_into()
-            .map_err(|_| anyhow!("Ukuran public key salah (harus 32 byte)"))?;
-        
-        let verifying_key = VerifyingKey::from_bytes(&pubkey_array)
-            .context("Gagal memuat VerifyingKey dari byte yang diberikan")?;
+    pub fn verify_and_extract_event(
+        signed_payload: SignedEvent,
+    ) -> Result<AuditEvent> {
 
-        // 2. Decode Signature dari Hex ke bentuk byte (64 byte)
-        let sig_bytes = hex::decode(&signed_payload.signature)
-            .context("Format signature bukan hex yang valid")?;
-        
-        let sig_array: [u8; 64] = sig_bytes.try_into()
-            .map_err(|_| anyhow!("Ukuran signature salah (harus 64 byte)"))?;
-        
-        let signature = Signature::from_bytes(&sig_array);
+        // 1. Parse iota_address
+        let iota_address = IotaAddress::from_str(&signed_payload.iota_address)
+            .context("iota_address tidak valid")?;
 
-        // 3. Serialize ulang data event ke bentuk bytes (JSON)
-        // ← Perbaikan: field bernama `payload`, bukan `event`
-        let payload_bytes = signed_payload.payload.as_bytes();
+        // 2. Decode signature (base64 → IotaSignature)
+        let signature = IotaSignature::decode_base64(&signed_payload.signature)
+            .map_err(|e| anyhow!("gagal decode signature: {e}"))?;
 
-        // 4. Verifikasi signature terhadap payload bytes
-        if verifying_key.verify(&payload_bytes, &signature).is_err() {
-            bail!("Digital signature tidak valid! Payload mungkin telah dimanipulasi atau public key salah.");
-        }
+        // 3. Reconstruct IntentMessage dari payload
+        //    Harus identik dengan yang di-sign di sisi client
+        let intent_msg = IntentMessage::new(
+            Intent::personal_message(),
+            signed_payload.payload.as_bytes().to_vec(),
+        );
 
+        // 4. Verifikasi: signature + iota_address + intent_message
+        //    verify_secure memastikan public key dalam signature
+        //    sesuai dengan iota_address → tidak perlu binding terpisah!
+        signature
+            .verify_secure(&intent_msg, iota_address, SignatureScheme::ED25519)
+            .map_err(|_| anyhow!("signature tidak valid atau bukan pemilik address"))?;
+
+        // 5. Parse AuditEvent dari payload
         let audit_event: AuditEvent = serde_json::from_str(&signed_payload.payload)
-            .context("Gagal mem-parsing payload string menjadi AuditEvent")?;
+            .context("gagal parse payload menjadi AuditEvent")?;
 
-        // 5. Jika lolos verifikasi, kembalikan AuditEvent dari field `payload`
         Ok(audit_event)
     }
 

@@ -7,6 +7,7 @@ use keyring::Entry;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::ats::ATSClient;
 use crate::move_call::MoveCall;
 
 // Enum
@@ -38,6 +39,7 @@ pub struct DecmedPackage {
 }
 
 pub struct AppState {
+    pub ats_client: ATSClient,
     pub keys_entry: Entry,
     pub move_call: MoveCall,
 }
@@ -68,7 +70,7 @@ pub struct CommandUpdateActivationKeyPayload {
     pub hospital_admin_cid: String,
 }
 
-#[derive(Debug, Deserialize, JsonSchema, Serialize)]
+#[derive(Debug, Deserialize, JsonSchema, Serialize, Clone)]
 pub struct ExecuteTxResponse {
     pub effects: Option<IotaTransactionBlockEffects>,
     pub error: Option<String>,

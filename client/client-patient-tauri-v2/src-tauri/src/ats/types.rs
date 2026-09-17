@@ -12,7 +12,7 @@ pub struct SignedAuditEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEvent {
     pub source_component: String,
-    pub actor_id: String,
+    pub actor: String,
     pub target_object: String,
     pub outcome: AuditOutcome,
     pub action_type: String,
@@ -67,32 +67,9 @@ pub enum AuditEventDetails {
         requester_id: String,
         transaction_digest: String,
     },
-
-    #[serde(rename = "EV10")]
-    SponsorshipDecision {
-        approval_status: String,
-        decision_reason: String,
-        approved_by: String,
-    },
-
-    #[serde(rename = "EV11")]
-    KeyManagement {
-        key_operation: String,
-        key_id: String,
-        key_type: String,
-    },
-
     #[serde(rename = "EV12")]
-    KeyAccess {
-        key_id: String,
-        key_type: String,
-        access_purpose: String,
-    },
-
-    #[serde(rename = "EV17")]
-    LedgerQuery {
-        metadata_type: String,
-        object_id: String,
-        query_requester_id: String,
+    OnChainMetadataAccess {
+        onchain_object_id: String,
+        requester_id: String,
     },
 }

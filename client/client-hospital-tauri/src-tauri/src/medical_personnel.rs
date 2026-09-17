@@ -26,6 +26,8 @@ use crate::{
         get_pre_keys_from_keys_entry, parse_keys_entry, serde_deserialize_from_base64,
         serde_serialize_to_base64,
     },
+    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
@@ -81,7 +83,7 @@ pub async fn new_medical_record(
         ProxyReencryptionSuccessResponse<()>,
         ProxyReencryptionErrorResponse,
     >(
-        Some(access_token),
+        Some(access_token.clone()),
         &format!("{}/medical-record", PROXY_BASE_URL),
         &json!({
             "medical_metadata": serde_serialize_to_base64(&medical_metadata).context(current_fn!())?,
@@ -92,6 +94,27 @@ pub async fn new_medical_record(
     )
     .await
     .context(current_fn!())?;
+
+    // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
+    {
+        let state_guard = _state.lock().await;
+
+        let event = AuditEvent {
+            source_component: "hospital-client".to_string(),
+            actor: patient_iota_address.to_string(),
+            target_object: patient_iota_address.to_string(),
+            outcome: AuditOutcome::Success,
+            action_type: "CREATE_MEDICAL_RECORD".to_string(),
+            details: AuditEventDetails::MedicalRecordAccess {
+                access_type: "Create".to_string(),
+                medical_record_id: patient_iota_address.to_string(),
+                capability_id: "hospital_capability".to_string(),
+                authorization_token_id: access_token.clone(),
+            },
+        };
+        state_guard.ats_client.send_event(event, actor_address, actor_key_pair,"new_medical_record");
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
 
     Ok(SuccessResponse {
         status: ResponseStatus::Success,
@@ -128,7 +151,7 @@ pub async fn get_medical_record(
         ProxyReencryptionErrorResponse,
         _,
     >(
-        Some(access_token),
+        Some(access_token.clone()),
         &req_client,
         StatusCode::OK,
         format!(
@@ -251,6 +274,25 @@ pub async fn get_medical_record(
         "prevIndex": res.data.prev_index,
     });
 
+    // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
+    {
+        let event = AuditEvent {
+            source_component: "hospital-client".to_string(),
+            actor: patient_iota_address.clone(),
+            target_object: patient_iota_address.clone(),
+            outcome: AuditOutcome::Success,
+            action_type: "READ_MEDICAL_RECORD".to_string(),
+            details: AuditEventDetails::MedicalRecordAccess {
+                access_type: "Read".to_string(),
+                medical_record_id: patient_iota_address.clone(),
+                capability_id: "hospital_capability".to_string(),
+                authorization_token_id: access_token.clone(),
+            },
+        };
+        state.ats_client.send_event(event, actor_address, actor_key_pair,"get_medical_record");
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
+
     Ok(SuccessResponse {
         data: res_data,
         status: ResponseStatus::Success,
@@ -286,7 +328,7 @@ pub async fn get_medical_record_update(
         ProxyReencryptionErrorResponse,
         _,
     >(
-        Some(access_token),
+        Some(access_token.clone()),
         &req_client,
         StatusCode::OK,
         format!(
@@ -404,6 +446,25 @@ pub async fn get_medical_record_update(
         "medicalData": medical_data,
     });
 
+    // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
+    {
+        let event = AuditEvent {
+            source_component: "hospital-client".to_string(),
+            actor: patient_iota_address.clone(),
+            target_object: patient_iota_address.clone(),
+            outcome: AuditOutcome::Success,
+            action_type: "READ_MEDICAL_RECORD_UPDATE".to_string(),
+            details: AuditEventDetails::MedicalRecordAccess {
+                access_type: "ReadUpdate".to_string(),
+                medical_record_id: patient_iota_address.clone(),
+                capability_id: "hospital_capability".to_string(),
+                authorization_token_id: access_token.clone(),
+            },
+        };
+        state.ats_client.send_event(event, actor_address, actor_key_pair,"get_medical_record_update");
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
+
     Ok(SuccessResponse {
         data: res_data,
         status: ResponseStatus::Success,
@@ -450,6 +511,7 @@ pub async fn get_read_access_medical_personnel(
     let _ = state
         .move_call
         .cleanup_read_access(
+            &state,
             activation_key.clone(),
             medical_personnel_iota_address,
             medical_personnel_iota_key_pair,
@@ -540,6 +602,7 @@ pub async fn get_update_access_medical_personnel(
     let _ = state
         .move_call
         .cleanup_update_access(
+            &state,
             activation_key.clone(),
             medical_personnel_iota_address,
             medical_personnel_iota_key_pair,
@@ -642,7 +705,7 @@ pub async fn update_medical_record(
         ProxyReencryptionSuccessResponse<()>,
         ProxyReencryptionErrorResponse,
     >(
-        Some(access_token),
+        Some(access_token.clone()),
         &format!("{}/medical-record", PROXY_BASE_URL),
         &json!({
             "medical_metadata": serde_serialize_to_base64(&medical_metadata).context(current_fn!())?,
@@ -653,6 +716,27 @@ pub async fn update_medical_record(
     )
     .await
     .context(current_fn!())?;
+
+    // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
+    {
+        let state_guard = _state.lock().await;
+
+        let event = AuditEvent {
+            source_component: "hospital-client".to_string(),
+            actor: patient_iota_address.to_string(),
+            target_object: patient_iota_address.to_string(),
+            outcome: AuditOutcome::Success,
+            action_type: "UPDATE_MEDICAL_RECORD".to_string(),
+            details: AuditEventDetails::MedicalRecordAccess {
+                access_type: "Update".to_string(),
+                medical_record_id: patient_iota_address.to_string(),
+                capability_id: "hospital_capability".to_string(),
+                authorization_token_id: access_token.clone(),
+            },
+        };
+        state_guard.ats_client.send_event(event, actor_address, actor_key_pair,"update_medical_record");
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
 
     Ok(SuccessResponse {
         status: ResponseStatus::Success,

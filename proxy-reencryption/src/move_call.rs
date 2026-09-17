@@ -21,6 +21,8 @@ use crate::{
         MovePatientMedicalMetadata,
     },
     utils::Utils,
+    types::AppState,
+    ats::{ATSClient, AuditEvent, AuditEventDetails, AuditOutcome},
 };
 
 pub struct MoveCall {
@@ -90,6 +92,7 @@ impl MoveCall {
 
     pub async fn create_capability(
         &self,
+        state: &AppState,
         proxy_iota_address: &IotaAddress,
         sender: IotaAddress,
         sender_key_pair: IotaKeyPair,
@@ -116,6 +119,24 @@ impl MoveCall {
                 .await
                 .context(current_fn!())?;
 
+        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        {
+            let requester = sender.to_string();
+
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor: requester.clone(),
+                target_object: "IOTA Gas Station".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+                details: AuditEventDetails::GasSponsorshipRequest {
+                    requested_gas_budget: NANOS_PER_IOTA * 2,
+                    requester_id: requester,
+                },
+            };
+            ATSClient::send_event_from_state(&state, event, "create_capability");
+        }
+        // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = Utils::get_ref_gas_price(&iota_client)
             .await
@@ -136,7 +157,7 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = Utils::execute_tx(tx, reservation_id)
+        let response = Utils::execute_tx(state, tx, reservation_id)
             .await
             .context(current_fn!())?;
 
@@ -147,6 +168,7 @@ impl MoveCall {
 
     pub async fn create_medical_record(
         &self,
+        state: &AppState,
         hospital_personnel_address: &IotaAddress,
         metadata: String,
         patient_address: &IotaAddress,
@@ -183,6 +205,24 @@ impl MoveCall {
             Utils::reserve_gas(NANOS_PER_IOTA * 2, 10)
                 .await
                 .context(current_fn!())?;
+        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        {
+            let requester = sender.to_string();
+
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor: requester.clone(),
+                target_object: "IOTA Gas Station".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+                details: AuditEventDetails::GasSponsorshipRequest {
+                    requested_gas_budget: NANOS_PER_IOTA * 2,
+                    requester_id: requester,
+                },
+            };
+            ATSClient::send_event_from_state(&state, event,"create_capability");
+        }
+        // ──────────────────────────────────────────────────────────────────────────────────
         let ref_gas_price = Utils::get_ref_gas_price(&iota_client)
             .await
             .context(current_fn!())?;
@@ -199,7 +239,7 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = Utils::execute_tx(tx, reservation_id)
+        let response = Utils::execute_tx(state, tx, reservation_id)
             .await
             .context(current_fn!())?;
 
@@ -294,9 +334,6 @@ impl MoveCall {
         Ok(role)
     }
 
-    /// ## Returns:
-    /// 1: prev_index
-    /// 2: next_index
     pub async fn get_medical_record(
         &self,
         hospital_personnel_address: &IotaAddress,
@@ -462,6 +499,7 @@ impl MoveCall {
 
     pub async fn update_medical_record(
         &self,
+        state: &AppState,
         hospital_personnel_address: &IotaAddress,
         metadata: String,
         patient_address: &IotaAddress,
@@ -498,6 +536,26 @@ impl MoveCall {
             Utils::reserve_gas(NANOS_PER_IOTA * 2, 10)
                 .await
                 .context(current_fn!())?;
+
+        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        {
+            let requester = sender.to_string();
+
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor: requester.clone(),
+                target_object: "IOTA Gas Station".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+                details: AuditEventDetails::GasSponsorshipRequest {
+                    requested_gas_budget: NANOS_PER_IOTA * 2,
+                    requester_id: requester,
+                },
+            };
+            ATSClient::send_event_from_state(&state, event,"create_capability");
+        }
+        // ──────────────────────────────────────────────────────────────────────────────────
+
         let ref_gas_price = Utils::get_ref_gas_price(&iota_client)
             .await
             .context(current_fn!())?;
@@ -514,7 +572,7 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = Utils::execute_tx(tx, reservation_id)
+        let response = Utils::execute_tx(state,tx, reservation_id)
             .await
             .context(current_fn!())?;
 

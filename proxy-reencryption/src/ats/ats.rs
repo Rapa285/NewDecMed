@@ -1,74 +1,135 @@
-use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
-use rand::rngs::OsRng;
-use reqwest::Client;
-use super::types::{AuditEvent,SignedAuditEvent};
+// src/ats/ats.rs
+
+use iota_types::crypto::{EncodeDecodeBase64, IotaKeyPair, Signature as IotaSignature};
+use shared_crypto::intent::{Intent, IntentMessage};
+
 use super::constants::ATS_ENDPOINT;
+use super::queue::{new_queue_entry, spawn_retry_worker, AtsQueue};
+use super::types::{AuditEvent, SignedAuditEvent};
+use crate::utils;
+use crate::types::AppState;
 
-
-// ── ATSClient ─────────────────────────────────────────────────────────────────
-
-pub struct ATSClient {
-    signing_key: SigningKey,
-    pub public_key: VerifyingKey,
-    req_client: Client,
-}
+pub struct ATSClient;
 
 impl ATSClient {
-
-    pub fn new() -> Self {
-        let mut csprng = OsRng;
-        let signing_key = SigningKey::generate(&mut csprng);
-        let public_key = signing_key.verifying_key();
-        Self {
-            signing_key,
-            public_key,
-            req_client: Client::new(),
-        }
+    /// Dipanggil sekali saat startup aplikasi
+    pub fn start_retry_worker() {
+        spawn_retry_worker(ATS_ENDPOINT);
     }
 
-    pub fn send_event(&self, event: AuditEvent, label: &'static str) {
+    pub fn send_event(
+        event: AuditEvent,
+        iota_address: String,
+        iota_key_pair: &IotaKeyPair,
+        label: &'static str,
+    ) {
+        // ── Langkah 1: Serialize dan sign event ──────────────────────────────
+        let payload_string = match serde_json::to_string(&event) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("[ATS][{label}] gagal serialisasi event: {e:?}");
+                return;
+            }
+        };
 
-        let signing_key_bytes = self.signing_key.to_bytes();
-        let pubkey_bytes = self.public_key.to_bytes();
-        let client = self.req_client.clone();
-        let endpoint = ATS_ENDPOINT;
+        let intent_msg = IntentMessage::new(
+            Intent::personal_message(),
+            payload_string.as_bytes().to_vec(),
+        );
+        let signature = IotaSignature::new_secure(&intent_msg, iota_key_pair);
 
+        let signed = SignedAuditEvent {
+            payload: payload_string,
+            signature: signature.encode_base64(),
+            iota_address,
+        };
+
+        let signed_json = match serde_json::to_string(&signed) {
+            Ok(j) => j,
+            Err(e) => {
+                eprintln!("[ATS][{label}] gagal serialize SignedAuditEvent: {e:?}");
+                return;
+            }
+        };
+
+        // Pindah ke tokio::spawn karena operasi async (queue + HTTP)
+        // signed_json dan label di-move ke dalam spawn
         tokio::spawn(async move {
-            let signing_key = SigningKey::from_bytes(&signing_key_bytes);
-            
-            // Logika pengiriman langsung di sini
-            let payload_string = match serde_json::to_string(&event) {
-                Ok(p) => p,
-                Err(e) => {
-                    eprintln!("[ATS][{}] gagal serialisasi event: {e:?}", label);
-                    return;
-                }
-            };
+            // ── Langkah 2: Simpan ke queue dulu (event aman di disk) ─────────
+            let entry = new_queue_entry(signed_json.clone(), label);
+            let entry_id = entry.id.clone();
 
-            let payload_bytes = payload_string.as_bytes();
-            let signature: Signature = signing_key.sign(payload_bytes);
-
-            let signed = SignedAuditEvent {
-                payload: payload_string,
-                signature: hex::encode(signature.to_bytes()),
-                public_key: hex::encode(pubkey_bytes),
-            };
-
-            if let Ok(json_debug) = serde_json::to_string_pretty(&signed) {
-                println!("[ATS Worker] Akan mengirim event ke endpoint '{}':\n{}", endpoint, json_debug);
+            if let Err(e) = AtsQueue::push(entry).await {
+                eprintln!(
+                    "[ATS][{label}] KRITIS: gagal simpan ke queue \
+                     — event mungkin hilang: {e}"
+                );
+                return;
             }
 
-            match client.post(endpoint).json(&signed).send().await {
-                Ok(res) if !res.status().is_success() => {
-                    let s = res.status();
-                    let b = res.text().await.unwrap_or_default();
-                    eprintln!("[ATS][{}] ATS error {s}: {b}", label);
+            println!("[ATS][{label}] event disimpan ke queue (id: {entry_id})");
+
+            // ── Langkah 3: Coba kirim langsung ───────────────────────────────
+            let client = reqwest::Client::new();
+
+            match client
+                .post(ATS_ENDPOINT)
+                .header("Content-Type", "application/json")
+                .body(signed_json)
+                .send()
+                .await
+            {
+                Ok(res) if res.status().is_success() => {
+                    println!("[ATS][{label}] event {entry_id} langsung terkirim ✓");
+
+                    // Hapus dari queue karena sudah berhasil
+                    let mut entries = AtsQueue::read_all().await;
+                    entries.retain(|e| e.id != entry_id);
+                    if let Err(e) = AtsQueue::rewrite(&entries).await {
+                        eprintln!(
+                            "[ATS][{label}] gagal hapus entry {entry_id} dari queue: {e}"
+                        );
+                    }
+                }
+                Ok(res) => {
+                    let status = res.status();
+                    let body = res.text().await.unwrap_or_default();
+                    eprintln!(
+                        "[ATS][{label}] pengiriman langsung gagal \
+                         (server {status}: {body}), \
+                         event {entry_id} akan di-retry oleh background worker"
+                    );
                 }
                 Err(e) => {
-                    eprintln!("[ATS][{}] gagal kirim request: {e:?}", label);
+                    eprintln!(
+                        "[ATS][{label}] pengiriman langsung gagal ({e:?}), \
+                         event {entry_id} akan di-retry oleh background worker"
+                    );
                 }
-                _ => {}
             }
         });
+    }
+
+    /// Untuk konteks di mana keypair perlu didapat dari keys_entry
+    pub fn send_event_from_state(
+        state: &AppState,
+        event: AuditEvent,
+        label: &'static str,
+    ) {
+        // proxy_iota_key_pair sudah tersimpan sebagai String encoded
+        let iota_key_pair = match IotaKeyPair::decode(&state.proxy_iota_key_pair) {
+            Ok(kp) => kp,
+            Err(e) => {
+                eprintln!("[ATS][{label}] gagal decode proxy keypair: {e:?}");
+                return;
+            }
+        };
+
+        Self::send_event(
+            event,
+            state.proxy_iota_address.clone(),
+            &iota_key_pair,
+            label,
+        );
     }
 }

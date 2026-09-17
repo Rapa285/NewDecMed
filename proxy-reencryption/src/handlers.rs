@@ -34,7 +34,7 @@ use crate::types::{GenerateJwtHandlerResponse, HandlerStoreKeysPayload};
 use crate::utils::Utils;
 
 // Tambahan untuk ATS
-use crate::ats::{AuditEvent, AuditEventDetails, AuditOutcome};
+use crate::ats::{ATSClient, AuditEvent, AuditEventDetails, AuditOutcome};
 use uuid::Uuid;
 
 pub struct Handlers {}
@@ -95,23 +95,25 @@ impl Handlers {
             .context(current_fn!())?;
         let created_at = Utils::sys_time_to_iso(std::time::SystemTime::now());
 
-        // ── Audit: upload IPFS ───────────────────────────────────────────────────────
+        // ── Audit: EV11 - IPFS Object Access ───────────────────────────────────────────────────────
         {
             let cid_clone = cid.clone();
             let event = AuditEvent {
                 source_component: "proxy-reencryption".to_string(),
-                actor_id: hospital_personnel_iota_address.to_string(),
+                actor: hospital_personnel_iota_address.to_string(),
                 target_object: cid_clone.clone(),
                 outcome: AuditOutcome::Success,
                 action_type: "IPFS_UPLOAD".to_string(),
-                details: AuditEventDetails::IPFSOperation {
+                details: AuditEventDetails::IPFSObjectAccess {
                     cid: cid_clone,
                     operation_type: "Upload".to_string(),
-                    data_size: 0, // ukuran tidak tersedia di titik ini
+                    requester_id: hospital_personnel_iota_address.to_string(),
                 },
             };
-            state.ats_client.send_event(event, "create_medical_record");
+            ATSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
         }
+        // ────────────────────────────────────────────────────────────────────────────────────
+
 
         let medical_metadata = MedicalMetadata {
             capsule: medical_metadata.capsule,
@@ -123,6 +125,7 @@ impl Handlers {
         let _ = state
             .move_call
             .create_medical_record(
+                &state,
                 &hospital_personnel_iota_address,
                 Utils::serde_serialize_to_base64(&medical_metadata).context(current_fn!())?,
                 &patient_iota_address,
@@ -153,6 +156,7 @@ impl Handlers {
         let _ = state
             .move_call
             .create_capability(
+                &state,
                 &proxy_iota_address,
                 IotaAddress::from_str(&state.global_admin_iota_address).context(current_fn!())?,
                 IotaKeyPair::decode(&state.global_admin_iota_key_pair.clone())
@@ -259,8 +263,27 @@ impl Handlers {
                 .map_err(|_| anyhow!("Keys not found"))
                 .code(StatusCode::BAD_REQUEST)?;
 
+            // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
+            {
+                let event = AuditEvent {
+                    source_component: "proxy-reencryption".to_string(),
+                    actor: current_user.iota_address.to_string(),
+                    target_object: "access_keys".to_string(),
+                    outcome: AuditOutcome::Success,
+                    action_type: "REDIS_READ".to_string(),
+                    details: AuditEventDetails::RedisOperation {
+                        redis_key_type: "access_keys".to_string(),
+                        operation_type: "GET".to_string(),
+                        ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
+                    },
+                };
+                ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+            }
+            // ────────────────────────────────────────────────────────────────────────────────────
             let access_keys: AccessKeys =
                 Utils::serde_deserialize_from_base64(access_keys).context(current_fn!())?;
+
+            // ── Audit: EV12- On-chain Metadata Access ─────────────────────────────────────────
 
             let patient_administrative_metadata = state
                 .move_call
@@ -272,6 +295,27 @@ impl Handlers {
                 .await
                 .context(current_fn!())?;
 
+            {
+                let object_id = query.patient_iota_address.clone();
+                let requester = current_user.iota_address.clone();
+
+                let event = AuditEvent {
+                    source_component: "proxy-reencryption".to_string(),
+                    actor: requester.clone(),
+                    target_object: object_id.clone(),
+                    outcome: AuditOutcome::Success,
+                    action_type: "ONCHAIN_METADATA_ACCESS".to_string(),
+                    details: AuditEventDetails::OnChainMetadataAccess {
+                        onchain_object_id: object_id,
+                        requester_id: requester,
+                    },
+                };
+                ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+            }
+
+            // ────────────────────────────────────────────────────────────────────────────────────
+
+            
             let patient_private_adm_metadata: PatientPrivateAdministrativeMetadata =
                 Utils::serde_deserialize_from_base64(
                     patient_administrative_metadata.private_metadata,
@@ -390,10 +434,29 @@ impl Handlers {
                 ))
                 .map_err(|_| anyhow!("Keys not found"))
                 .code(StatusCode::BAD_REQUEST)?;
+            
+            // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
+            {
+                let event = AuditEvent {
+                    source_component: "proxy-reencryption".to_string(),
+                    actor: patient_iota_address.to_string(),
+                    target_object: "nonce".to_string(),
+                    outcome: AuditOutcome::Success,
+                    action_type: "REDIS_READ".to_string(),
+                    details: AuditEventDetails::RedisOperation {
+                        redis_key_type: "nonce".to_string(),
+                        operation_type: "GET".to_string(),
+                        ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
+                    },
+                };
+                ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+            }
+            // ────────────────────────────────────────────────────────────────────────────────────
 
             let access_keys: AccessKeys =
                 Utils::serde_deserialize_from_base64(access_keys).context(current_fn!())?;
-
+            
+            // ── Audit: EV12- On-chain Metadata Access ─────────────────────────────────────────
             let (medical_metadata, administrative_metadata, current_index, prev_index, next_index) =
                 state
                     .move_call
@@ -406,10 +469,32 @@ impl Handlers {
                     .await
                     .context(current_fn!())?;
 
+            {
+                let object_id = query.patient_iota_address.clone();
+                let requester = current_user.iota_address.clone();
+
+                let event = AuditEvent {
+                    source_component: "proxy-reencryption".to_string(),
+                    actor: requester.clone(),
+                    target_object: object_id.clone(),
+                    outcome: AuditOutcome::Success,
+                    action_type: "ONCHAIN_METADATA_ACCESS".to_string(),
+                    details: AuditEventDetails::OnChainMetadataAccess {
+                        onchain_object_id: object_id,
+                        requester_id: requester,
+                    },
+                };
+                ATSClient::send_event_from_state(&state, event,"get_medical_record");
+            }
+            
+            // ────────────────────────────────────────────────────────────────────────────────────
+
             let medical_metadata: MedicalMetadata =
                 Utils::serde_deserialize_from_base64(medical_metadata.metadata)
                     .context(current_fn!())?;
 
+            let cid_clone = medical_metadata.cid.clone();
+            
             let patient_private_adm_metadata: PatientPrivateAdministrativeMetadata =
                 Utils::serde_deserialize_from_base64(administrative_metadata.private_metadata)
                     .context(current_fn!())?;
@@ -417,6 +502,26 @@ impl Handlers {
             let enc_medical_data = Utils::get_data_ipfs(medical_metadata.cid)
                 .await
                 .context(current_fn!())?;
+            
+            // ── Audit: EV11 - IPFS Object Access ──────────────────────────────────────────────
+            {
+                let requester = current_user.iota_address.clone();
+
+                let event = AuditEvent {
+                    source_component: "proxy-reencryption".to_string(),
+                    actor: requester.clone(),
+                    target_object: cid_clone.clone(),
+                    outcome: AuditOutcome::Success,
+                    action_type: "IPFS_READ".to_string(),
+                    details: AuditEventDetails::IPFSObjectAccess {
+                        cid: cid_clone,
+                        operation_type: "Read".to_string(),
+                        requester_id: requester,
+                    },
+                };
+                ATSClient::send_event_from_state(&state, event,"get_data_ipfs");
+            }
+            // ──────────────────────────────────────────────────────────────────────────────────
 
             let k_frag: KeyFrag = Utils::serde_deserialize_from_base64(access_keys.k_frag.clone())
                 .context(current_fn!())?;
@@ -550,6 +655,24 @@ impl Handlers {
                 ))
                 .map_err(|_| anyhow!("Keys not found"))
                 .code(StatusCode::BAD_REQUEST)?;
+            
+            // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
+            {
+                let event = AuditEvent {
+                    source_component: "proxy-reencryption".to_string(),
+                    actor: patient_iota_address.to_string(),
+                    target_object: "nonce".to_string(),
+                    outcome: AuditOutcome::Success,
+                    action_type: "REDIS_READ".to_string(),
+                    details: AuditEventDetails::RedisOperation {
+                        redis_key_type: "nonce".to_string(),
+                        operation_type: "GET".to_string(),
+                        ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
+                    },
+                };
+                ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+            }
+            // ────────────────────────────────────────────────────────────────────────────────────
 
             let access_keys: AccessKeys =
                 Utils::serde_deserialize_from_base64(access_keys).context(current_fn!())?;
@@ -565,10 +688,32 @@ impl Handlers {
                 .await
                 .context(current_fn!())?;
 
+            // ── Audit: EV12- On-chain Metadata Access ─────────────────────────────────────────
+            {
+                let object_id = query.patient_iota_address.clone();
+                let requester = current_user.iota_address.clone();
+
+                let event = AuditEvent {
+                    source_component: "proxy-reencryption".to_string(),
+                    actor: requester.clone(),
+                    target_object: object_id.clone(),
+                    outcome: AuditOutcome::Success,
+                    action_type: "ONCHAIN_METADATA_ACCESS".to_string(),
+                    details: AuditEventDetails::OnChainMetadataAccess {
+                        onchain_object_id: object_id,
+                        requester_id: requester,
+                    },
+                };
+                ATSClient::send_event_from_state(&state, event,"get_medical_record_update");
+            }
+            // ────────────────────────────────────────────────────────────────────────────────────
+
             let medical_metadata: MedicalMetadata =
                 Utils::serde_deserialize_from_base64(medical_metadata.metadata)
                     .context(current_fn!())?;
 
+            let cid_clone = medical_metadata.cid.clone();
+            
             let patient_private_adm_metadata: PatientPrivateAdministrativeMetadata =
                 Utils::serde_deserialize_from_base64(administrative_metadata.private_metadata)
                     .context(current_fn!())?;
@@ -576,6 +721,26 @@ impl Handlers {
             let enc_medical_data = Utils::get_data_ipfs(medical_metadata.cid)
                 .await
                 .context(current_fn!())?;
+            
+            // ── Audit: EV11 - IPFS Object Access ──────────────────────────────────────────────
+            {
+                let requester = current_user.iota_address.clone();
+
+                let event = AuditEvent {
+                    source_component: "proxy-reencryption".to_string(),
+                    actor: requester.clone(),
+                    target_object: cid_clone.clone(),
+                    outcome: AuditOutcome::Success,
+                    action_type: "IPFS_READ".to_string(),
+                    details: AuditEventDetails::IPFSObjectAccess {
+                        cid: cid_clone,
+                        operation_type: "Read".to_string(),
+                        requester_id: requester,
+                    },
+                };
+                ATSClient::send_event_from_state(&state, event,"get_data_ipfs");
+            }
+            // ──────────────────────────────────────────────────────────────────────────────────
 
             let k_frag: KeyFrag = Utils::serde_deserialize_from_base64(access_keys.k_frag.clone())
                 .context(current_fn!())?;
@@ -661,6 +826,26 @@ impl Handlers {
             .is_patient_registered(&patient_iota_address, proxy_iota_address)
             .await
             .context(current_fn!())?;
+        
+        // ── Audit: EV12- On-chain Metadata Access ─────────────────────────────────────────
+        {
+            let object_id = payload.iota_address.clone();
+            let requester = payload.iota_address.clone();
+
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor: requester.clone(),
+                target_object: object_id.clone(),
+                outcome: AuditOutcome::Success,
+                action_type: "ONCHAIN_METADATA_ACCESS".to_string(),
+                details: AuditEventDetails::OnChainMetadataAccess {
+                    onchain_object_id: object_id,
+                    requester_id: requester,
+                },
+            };
+            ATSClient::send_event_from_state(&state, event,"get_nonce_handler");
+        }
+        // ──────────────────────────────────────────────────────────────────────────────────
 
         let nonce = Utils::generate_64_bytes_seed();
         let nonce = hex::encode(&nonce);
@@ -675,22 +860,21 @@ impl Handlers {
             )
             .context(current_fn!())?;
         
-        // ── Audit: EV - Redis Read ───────────────────────────────────────────────────
+        // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
         {
             let event = AuditEvent {
                 source_component: "proxy-reencryption".to_string(),
-                actor_id: patient_iota_address.to_string(),
+                actor: patient_iota_address.to_string(),
                 target_object: "nonce".to_string(),
                 outcome: AuditOutcome::Success,
-                action_type: "NONCE_REQUEST".to_string(),
-                details: AuditEventDetails::PRERequest {
-                    endpoint_called: "/api/v1/nonce".to_string(),
-                    request_id: Uuid::new_v4().to_string(),
-                    caller_component: "client".to_string(),
-                    channel_encryption: "TLS".to_string(),
+                action_type: "REDIS_READ".to_string(),
+                details: AuditEventDetails::RedisOperation {
+                    redis_key_type: "nonce".to_string(),
+                    operation_type: "GET".to_string(),
+                    ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
                 },
             };
-            state.ats_client.send_event(event, "get_nonce");
+            ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
         }
 
         Ok(Utils::build_success_response(nonce, StatusCode::OK))
@@ -720,6 +904,22 @@ impl Handlers {
             .map_err(|_| anyhow!("Nonce not found"))
             .code(StatusCode::BAD_REQUEST)?;
 
+        // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
+        {
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor: patient_iota_address.to_string(),
+                target_object: "nonce".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "REDIS_READ".to_string(),
+                details: AuditEventDetails::RedisOperation {
+                    redis_key_type: "nonce".to_string(),
+                    operation_type: "GET".to_string(),
+                    ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
+                },
+            };
+            ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+        }
         let intent_message = IntentMessage::new(Intent::personal_message(), nonce);
 
         let _ = signature
@@ -735,6 +935,23 @@ impl Handlers {
             .del(patient_iota_address.to_string())
             .map_err(|_| anyhow!("Nonce expired"))
             .code(StatusCode::UNAUTHORIZED)?;
+        
+        // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
+        {
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor: patient_iota_address.to_string(),
+                target_object: "nonce".to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: "REDIS_DELETE".to_string(),
+                details: AuditEventDetails::RedisOperation {
+                    redis_key_type: "patient_iota_address".to_string(),
+                    operation_type: "DEL".to_string(),
+                    ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
+                },
+            };
+            ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+        }
 
         // Get the role of hospital personnel
         let role = state
@@ -824,24 +1041,24 @@ impl Handlers {
             "access_token_update": hospital_personnel_access_token_update,
         });
 
-        // ── Audit: Redis ─────────────────────────────────────────────
+        // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────────
         {
             let event = AuditEvent {
                 source_component: "proxy-reencryption".to_string(),
-                actor_id: patient_iota_address.to_string(),
+                actor: patient_iota_address.to_string(),
                 target_object: format!(
                     "keys:{}@{}",
                     hospital_personnel_iota_address, patient_iota_address
                 ),
                 outcome: AuditOutcome::Success,
                 action_type: "KEY_STORE".to_string(),
-                details: AuditEventDetails::RedisWrite {
+                details: AuditEventDetails::RedisOperation {
                     redis_key_type: "pre_access_keys".to_string(),
                     operation_type: "SET".to_string(),
                     ttl_remaining: update_keys_duration.unwrap_or(read_keys_duration) as i64,
                 },
             };
-            state.ats_client.send_event(event, "store_keys");
+            ATSClient::send_event_from_state(&state, event,"pre/handlers/store_keys");
         }
 
         Ok(Utils::build_success_response(res_data, StatusCode::OK))
@@ -901,6 +1118,27 @@ impl Handlers {
             .await
             .context(current_fn!())?;
         let created_at = Utils::sys_time_to_iso(std::time::SystemTime::now());
+        
+        // ── Audit: EV11 - IPFS Object Access ──────────────────────────────────────────────
+        {
+            let cid_clone = cid.clone();
+            let requester = current_user.iota_address.clone();
+
+            let event = AuditEvent {
+                source_component: "proxy-reencryption".to_string(),
+                actor: requester.clone(),
+                target_object: cid_clone.clone(),
+                outcome: AuditOutcome::Success,
+                action_type: "IPFS_UPLOAD".to_string(),
+                details: AuditEventDetails::IPFSObjectAccess {
+                    cid: cid_clone,
+                    operation_type: "Upload".to_string(),
+                    requester_id: requester,
+                },
+            };
+            ATSClient::send_event_from_state(&state, event,"update_medical_record");
+        }
+        // ──────────────────────────────────────────────────────────────────────────────────
 
         let medical_metadata = MedicalMetadata {
             capsule: medical_metadata.capsule,
@@ -912,6 +1150,7 @@ impl Handlers {
         let _ = state
             .move_call
             .update_medical_record(
+                &state,
                 &hospital_personnel_iota_address,
                 Utils::serde_serialize_to_base64(&medical_metadata).context(current_fn!())?,
                 &patient_iota_address,

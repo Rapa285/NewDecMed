@@ -13,6 +13,11 @@ mod signup;
 mod types;
 mod utils;
 
+
+// Modul ATS
+mod ats;
+use ats::ATSClient;
+
 use constants::{
     DECMED_ADDRESS_ID_OBJECT_ID, DECMED_ADDRESS_ID_OBJECT_VERSION, DECMED_GLOBAL_ADMIN_CAP_ID,
     DECMED_HOSPITAL_ID_METADATA_OBJECT_ID, DECMED_HOSPITAL_ID_METADATA_OBJECT_VERSION,
@@ -96,6 +101,7 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
     }
 
     app.manage(Mutex::new(AppState {
+        ats_client: ATSClient::new(),
         administrative_data: None,
         auth_state,
         keys_entry,

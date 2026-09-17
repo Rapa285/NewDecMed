@@ -47,21 +47,11 @@ pub struct ExecuteTxResponse {
     pub error: Option<String>,
 }
 
-
-/// Representasi hasil dari pelaksanaan audit event
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum AuditOutcome {
-    Success,
-    Failure,
-    Denied,
-    Unknown,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct SignedEvent {
     pub payload: String,
-    pub signature: String,
-    pub public_key: String,
+    pub signature: String,    // base64: IotaSignature
+    pub iota_address: String, // wajib, untuk verifikasi
 }
 
 impl SignedEvent {
@@ -71,7 +61,7 @@ impl SignedEvent {
             "{}|{}|{}",
             payload_str,
             self.signature,
-            self.public_key
+            self.iota_address
         ))
     }
 }
@@ -92,128 +82,216 @@ pub struct AuditBatch {
 }
 
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuditEvent {
-    pub source_component: String,
-    pub actor_id: String,
-    pub target_object: String,
-    pub outcome: AuditOutcome,
-    pub action_type: String,
-    
-    #[serde(flatten)]
-    pub details: AuditEventDetails, 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum AuditOutcome {
+    Success,
+    Failure,
+    Denied,
+    Unknown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuditRecord {
-    pub record_id: Uuid,
-    pub timestamp: DateTime<Utc>,
-    pub prev_record_hash: Option<String>,
-    pub record_hash: String,
-    
-    #[serde(flatten)] 
-    pub event: AuditEvent,
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum AuditSourceComponent {
+    HospitalClient,
+    PatientClient,
+    MinistryClient,
+    ProxyReencryption,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AuditActionType {
+    Signin,
+    Signup,
+    Signout,
+    ValidatePin,
+    ValidateSeedWords,
+    UseActivationKey,
+    QrScan,
+    QrDecode,
+    QrValidate,
+    CreateAccess,
+    StoreKeys,
+    RevokeAccess,
+    ReadMedicalRecord,
+    CreateMedicalRecord,
+    UpdateMedicalRecord,
+    ReadAdministrativeData,
+    CreatePersonnelActivationKey,
+    UpdatePersonnelActivationKey,
+    CreateFacilityActivationKey,
+    UpdateFacilityActivationKey,
+    NonceRequest,
+    PreReencrypt,
+    JwtIssue,
+    AuthMiddlewareCheck,
+    IotaTransaction,
+    GasReserve,
+    GasExecute,
+    RedisGet,
+    RedisSet,
+    RedisDel,
+    IpfsUpload,
+    IpfsFetch,
+    ChainRead,
+    ChainWrite,
+    JwtValidate,
+    RoleCheck,
+    PurposeCheck,
+    ProxyCapValidate,
+    ScopeValidate,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "event_type")]
 pub enum AuditEventDetails {
     #[serde(rename = "EV1")]
     Authentication {
         auth_method: String,
-        authentication_result: String,
-        failed_attempt_count: u32,
-        device_fingerprint: String,
+        role: String,
+        attempt_count: u32,
+        failure_reason: Option<String>,
+        device_info: Option<String>,
     },
-
     #[serde(rename = "EV2")]
-    QRDelegation {
-        qr_payload_id: String,
-        recipient_identity: String,
-        signature_valid: bool,
+    QrValidation {
+        qr_content_hash: String,
+        hospital_personnel_iota_address: String,
+        hospital_personnel_pre_public_key_fingerprint: String,
+        hospital_name: String,
+        hospital_personnel_name: String,
+        validation_step: String,
     },
-
     #[serde(rename = "EV3")]
-    CapabilityIssuance {
-        capability_id: String,
-        access_scope: String,
-        expiry_duration: u64,
+    CapabilityCreation {
+        access_type: String,
+        exp_duration_ms: u64,
+        k_frag_fingerprint: String,
         transaction_digest: String,
+        hospital_name: String,
+        nonce_used: String,
     },
-
     #[serde(rename = "EV4")]
     MedicalRecordAccess {
-        access_type: String,
-        medical_record_id: String,
-        capability_id: String,
-        authorization_token_id: String,
+        patient_iota_address: String,
+        record_index: Option<u64>,
+        role_used: String,
+        purpose_used: String,
+        jwt_sub: String,
+        capability_valid: bool,
+        ipfs_cid: Option<String>,
+        reencryption_performed: bool,
     },
-
     #[serde(rename = "EV5")]
-    HospitalPersonnelKeyGeneration {
-        facility_id: String,
-        personnel_id: String,
-        activation_key_id: String,
+    PersonnelActivationKey {
+        admin_iota_address: String,
+        personnel_id_hash: String,
+        role_assigned: String,
+        hospital_id_hash: String,
+        transaction_digest: String,
+        activation_key_hash: String,
     },
-
     #[serde(rename = "EV6")]
-    HealthcareFacilityRegistration {
+    FacilityRegistration {
         facility_id: String,
         facility_name: String,
         administrator_id: String,
+        transaction_digest: String,
+        activation_key_hash: String,
     },
-
     #[serde(rename = "EV7")]
-    PREServiceRequest {
+    PreServiceOperation {
         endpoint_called: String,
         request_id: String,
         caller_component: String,
         channel_encryption: String,
+        jwt_purpose: Option<String>,
+        http_status_code: u16,
+        latency_ms: u64,
     },
-
     #[serde(rename = "EV8")]
-    IotaTransactionSubmission {
+    IotaTransaction {
         transaction_digest: String,
-        signer_identity: String,
         payload_hash: String,
+        move_function: String,
+        move_module: String,
         network_confirmation_status: String,
+        gas_used: Option<u64>,
+        sponsor_address: String,
     },
-
     #[serde(rename = "EV9")]
-    GasSponsorshipRequest {
-        requested_gas_budget: u64,
-        requester_id: String,
-        transaction_digest: String,
+    GasSponsorship {
+        gas_budget_requested: u64,
+        reserve_duration_secs: u64,
+        reservation_id: Option<u64>,
+        sponsor_address: Option<String>,
+        transaction_digest: Option<String>,
+        gas_coin_object_ids: Vec<String>,
     },
-
     #[serde(rename = "EV10")]
     RedisOperation {
         redis_key_type: String,
         operation_type: String,
-        process_identifier: String,
-        ttl_remaining: i64,
+        ttl_remaining: Option<i64>,
+        key_pattern: String,
     },
-
     #[serde(rename = "EV11")]
-    IPFSObjectAccess {
+    IpfsOperation {
         cid: String,
         operation_type: String,
-        requester_id: String,
+        data_size: Option<u64>,
+        patient_iota_address: Option<String>,
+        ipfs_node_url: String,
     },
-
     #[serde(rename = "EV12")]
-    OnChainMetadataAccess {
-        onchain_object_id: String,
-        requester_id: String,
+    IotaMetadataOperation {
+        object_id: String,
+        object_type: String,
+        move_function: String,
+        is_mutable: bool,
+        transaction_digest: Option<String>,
+        dev_inspect_used: bool,
     },
-
     #[serde(rename = "EV13")]
     CapabilityValidation {
         capability_id: String,
-        requester_id: String,
-        validation_result: bool,
+        required_scope: String,
+        actual_scope: String,
         rejection_reason: Option<String>,
+        middleware_layer: String,
     },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct AuditEvent {
+    pub source_component: AuditSourceComponent,
+    pub actor: String,
+    pub target_object: String,
+    pub outcome: AuditOutcome,
+    pub action_type: AuditActionType,
+    pub details: AuditEventDetails,
+}
+
+impl AuditEventDetails {
+    pub fn event_type(&self) -> &'static str {
+        match self {
+            AuditEventDetails::Authentication { .. } => "EV1",
+            AuditEventDetails::QrValidation { .. } => "EV2",
+            AuditEventDetails::CapabilityCreation { .. } => "EV3",
+            AuditEventDetails::MedicalRecordAccess { .. } => "EV4",
+            AuditEventDetails::PersonnelActivationKey { .. } => "EV5",
+            AuditEventDetails::FacilityRegistration { .. } => "EV6",
+            AuditEventDetails::PreServiceOperation { .. } => "EV7",
+            AuditEventDetails::IotaTransaction { .. } => "EV8",
+            AuditEventDetails::GasSponsorship { .. } => "EV9",
+            AuditEventDetails::RedisOperation { .. } => "EV10",
+            AuditEventDetails::IpfsOperation { .. } => "EV11",
+            AuditEventDetails::IotaMetadataOperation { .. } => "EV12",
+            AuditEventDetails::CapabilityValidation { .. } => "EV13",
+        }
+    }
 }
 
 // ── GET /api/logs ──────────────────────────────────────────────────────────

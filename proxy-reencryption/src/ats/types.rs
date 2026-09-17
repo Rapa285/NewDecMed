@@ -6,13 +6,13 @@ use serde::{Serialize, Deserialize};
 pub struct SignedAuditEvent {
     pub payload: String,
     pub signature: String,
-    pub public_key: String,
+    pub iota_address: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEvent {
     pub source_component: String,
-    pub actor_id: String,
+    pub actor: String,
     pub target_object: String,
     pub outcome: AuditOutcome,
     pub action_type: String,
@@ -31,83 +31,73 @@ pub enum AuditOutcome {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "event_type")]
 pub enum AuditEventDetails {
-    #[serde(rename = "EV6")]
-    PRERequest {
+    #[serde(rename = "EV7")]
+    PREServiceRequest {
         endpoint_called: String,
         request_id: String,
         caller_component: String,
         channel_encryption: String,
     },
 
-    #[serde(rename = "EV7")]
-    Reencryption {
-        reencryption_operation_id: String,
-        capability_id: String,
-        target_ciphertext: String,
-        kfrag_identifier: String,
-    },
-
     #[serde(rename = "EV8")]
-    IotaTransaction {
+    IotaTransactionSubmission {
         transaction_digest: String,
+        signer_identity: String,
         payload_hash: String,
         network_confirmation_status: String,
     },
 
     #[serde(rename = "EV9")]
-    SponsorshipRequest {
+    GasSponsorshipRequest {
         requested_gas_budget: u64,
         requester_id: String,
-        transaction_digest: String,
     },
 
     #[serde(rename = "EV10")]
-    SponsorshipDecision {
-        approval_status: String,
-        decision_reason: String,
-        approved_by: String,
+    RedisOperation {
+        redis_key_type: String,
+        operation_type: String,
+        ttl_remaining: i64,
+    },
+
+    #[serde(rename = "EV11")]
+    IPFSObjectAccess {
+        cid: String,
+        operation_type: String,
+        requester_id: String,
+    },
+
+    #[serde(rename = "EV12")]
+    OnChainMetadataAccess {
+        onchain_object_id: String,
+        requester_id: String,
     },
 
     #[serde(rename = "EV13")]
-    RedisWrite {
-        redis_key_type: String,
-        operation_type: String,
-        ttl_remaining: i64,
-    },
-
-    #[serde(rename = "EV14")]
-    RedisRead {
-        redis_key_type: String,
-        request_origin: String,
-        ttl_remaining: i64,
-    },
-
-    #[serde(rename = "EV15")]
-    IPFSOperation {
-        cid: String,
-        operation_type: String,
-        data_size: u64,
-    },
-
-    #[serde(rename = "EV16")]
-    IPFSVerification {
-        cid: String,
-        expected_hash: String,
-        verification_result: bool,
-    },
-
-    #[serde(rename = "EV17")]
-    LedgerQuery {
-        metadata_type: String,
-        object_id: String,
-        query_requester_id: String,
-    },
-
-    #[serde(rename = "EV18")]
     CapabilityValidation {
-        capability_checked: String,
-        required_scope: String,
-        actual_scope: String,
+        capability_id: String,
+        requester_id: String,
         validation_result: bool,
+        rejection_reason: Option<String>,
     },
+}
+
+impl AuditEventDetails {
+    pub fn event_type(&self) -> &'static str {
+        match self {
+            AuditEventDetails::PREServiceRequest { .. } => "EV7",
+            AuditEventDetails::IotaTransactionSubmission { .. } => "EV8",
+            AuditEventDetails::GasSponsorshipRequest { .. } => "EV9",
+            AuditEventDetails::RedisOperation { .. } => "EV10",
+            AuditEventDetails::IPFSObjectAccess { .. } => "EV11",
+            AuditEventDetails::OnChainMetadataAccess { .. } => "EV12",
+            AuditEventDetails::CapabilityValidation { .. } => "EV13",
+        }
+    }
+}
+
+impl AuditEvent {
+    pub fn event_type(&self) -> &'static str {
+        self.details.event_type()
+    }
 }

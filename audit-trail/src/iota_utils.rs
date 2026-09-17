@@ -19,7 +19,7 @@ use iota_types::{
     programmable_transaction_builder::ProgrammableTransactionBuilder,
     transaction::{
         CallArg, ProgrammableTransaction, SenderSignedData, TransactionData,
-        TransactionDataAPI, Transaction,
+        TransactionDataAPI, Transaction, ObjectArg,
     },
     Identifier, TypeTag,
 };
@@ -205,5 +205,15 @@ impl IotaUtils {
         }
 
         Ok(0)
+    }
+
+    pub fn construct_shared_object_call_arg(id: ObjectID, version: u64, mutable: bool) -> CallArg {
+        let activation_key_table_arg = ObjectArg::SharedObject {
+            id,
+            initial_shared_version: version.into(),
+            mutable,
+        };
+
+        CallArg::Object(activation_key_table_arg)
     }
 }

@@ -5,14 +5,15 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SignedAuditEvent {
     pub payload: String,
-    pub signature: String,
-    pub public_key: String,
+    pub signature: String,    // base64: IotaSignature
+    pub public_key: String,   // hex: raw public key bytes
+    pub iota_address: String, // untuk verifikasi langsung
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEvent {
     pub source_component: String,
-    pub actor_id: String,
+    pub actor: String,
     pub target_object: String,
     pub outcome: AuditOutcome,
     pub action_type: String,
@@ -47,38 +48,25 @@ pub enum AuditEventDetails {
         authorization_token_id: String,
     },
 
+    #[serde(rename = "EV5")]
+    HospitalPersonnelKeyGeneration {
+        facility_id: String,
+        personnel_id: String,
+        activation_key_id: String,
+    },
+
     #[serde(rename = "EV8")]
-    IotaTransaction {
+    IotaTransactionSubmission {
         transaction_digest: String,
+        signer_identity: String,
         payload_hash: String,
         network_confirmation_status: String,
     },
 
     #[serde(rename = "EV9")]
-    SponsorshipRequest {
+    GasSponsorshipRequest {
         requested_gas_budget: u64,
         requester_id: String,
-        transaction_digest: String,
     },
 
-    #[serde(rename = "EV10")]
-    SponsorshipDecision {
-        approval_status: String,
-        decision_reason: String,
-        approved_by: String,
-    },
-
-    #[serde(rename = "EV11")]
-    KeyManagement {
-        key_operation: String,
-        key_id: String,
-        key_type: String,
-    },
-
-    #[serde(rename = "EV12")]
-    KeyAccess {
-        key_id: String,
-        key_type: String,
-        access_purpose: String,
-    },
 }

@@ -310,6 +310,7 @@ pub async fn update_profile(
     let _ = state
         .move_call
         .update_administrative_metadata(
+            &state,
             activation_key,
             serde_serialize_to_base64(&private_administrative_metadata).context(current_fn!())?,
             serde_serialize_to_base64(&public_administrative_data).context(current_fn!())?,

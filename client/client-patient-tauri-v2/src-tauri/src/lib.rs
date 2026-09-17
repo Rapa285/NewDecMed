@@ -12,6 +12,8 @@ mod signup;
 mod types;
 mod utils;
 
+mod ats;
+
 use anyhow::Context;
 use constants::{
     DECMED_ADDRESS_ID_OBJECT_ID, DECMED_ADDRESS_ID_OBJECT_VERSION, DECMED_GLOBAL_ADMIN_CAP_ID,
@@ -27,6 +29,7 @@ use move_call::MoveCall;
 use std::str::FromStr;
 use tauri::{async_runtime::Mutex, Manager};
 use types::{AppState, AuthState, DecmedPackage, KeysEntry, ScanState, SignInState, SignUpState};
+use ats::ATSClient;
 
 fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Error>> {
     // #[cfg(target_os = "android")]
@@ -131,6 +134,7 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
     }
 
     app.manage(Mutex::new(AppState {
+        ats_client: ATSClient::new(),
         administrative_data: None,
         auth_state,
         keys_entry,

@@ -35,7 +35,7 @@ shared_crypto = { git = "https://github.com/iotaledger/iota", package = "shared-
 dotenv = "0.15"
 bcs = "0.1.4"
 schemars = "0.8"
-rand = "0.9"
+rand = "0.8.5"
 bip32 = "0.5"
 bincode = "2"
 umbral-pre = { version = "0.11", features = ["default-serialization", "serde"] }
@@ -57,3 +57,6 @@ thiserror = "2.0"
 tauri-plugin-http = { version = "2", features = ["json", "multipart"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
+
+# Dependency ATS
+ed25519-dalek = { version = "2", features = ["rand_core"] }

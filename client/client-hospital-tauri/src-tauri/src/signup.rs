@@ -187,6 +187,7 @@ pub async fn signup(
     let _ = state
         .move_call
         .signup(
+            &state,
             activation_key,
             hospital_personnnel_hospital_part_hash,
             hospital_personnnel_id_part_hash,

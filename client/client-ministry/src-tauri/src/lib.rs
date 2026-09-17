@@ -7,6 +7,9 @@ mod move_call;
 mod types;
 mod utils;
 
+// Modul ATS
+mod ats;
+
 use std::str::FromStr;
 
 use iota_types::{base_types::ObjectID, Identifier};
@@ -14,6 +17,7 @@ use keyring::Entry;
 use tauri::{async_runtime::Mutex, Manager};
 
 use crate::{
+    ats::ATSClient,
     constants::{
         DECMED_ADDRESS_ID_OBJECT_ID, DECMED_ADDRESS_ID_OBJECT_VERSION, DECMED_GLOBAL_ADMIN_CAP_ID,
         DECMED_HOSPITAL_ID_METADATA_OBJECT_ID, DECMED_HOSPITAL_ID_METADATA_OBJECT_VERSION,
@@ -61,14 +65,10 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
     };
 
     match keys_entry.get_secret() {
-        Ok(_) => {
-            // let new_keys_entry = serde_json::to_vec(&new_keys_entry).unwrap();
-            // keys_entry.set_secret(&new_keys_entry).unwrap();
-        }
+        Ok(_) => {}
         Err(err @ keyring::Error::NoEntry) => {
             let new_keys_entry = serde_json::to_vec(&new_keys_entry).unwrap();
             keys_entry.set_secret(&new_keys_entry).unwrap();
-
             println!("{:#?}", err);
         }
         Err(err) => {
@@ -77,6 +77,7 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
     }
 
     app.manage(Mutex::new(AppState {
+        ats_client: ATSClient::new(),
         keys_entry,
         move_call,
     }));

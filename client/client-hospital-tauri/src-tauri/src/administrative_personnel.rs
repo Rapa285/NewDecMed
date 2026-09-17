@@ -174,6 +174,7 @@ pub async fn get_read_access_administrative_personnel(
     let _ = state
         .move_call
         .cleanup_read_access(
+            &state,
             activation_key.clone(),
             administrative_personnel_iota_address,
             administrative_personnel_iota_key_pair,

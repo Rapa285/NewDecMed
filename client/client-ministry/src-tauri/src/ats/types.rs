@@ -12,7 +12,7 @@ pub struct SignedAuditEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditEvent {
     pub source_component: String,
-    pub actor_id: String,
+    pub actor: String,
     pub target_object: String,
     pub outcome: AuditOutcome,
     pub action_type: String,
@@ -31,32 +31,24 @@ pub enum AuditOutcome {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "event_type")]
 pub enum AuditEventDetails {
-    #[serde(rename = "EV5")]
-    FacilityRegistration {
+    #[serde(rename = "EV6")]
+    HealthcareFacilityRegistration {
         facility_id: String,
         facility_name: String,
         administrator_id: String,
-        transaction_digest: String,
     },
 
     #[serde(rename = "EV8")]
-    IotaTransaction {
+    IotaTransactionSubmission {
         transaction_digest: String,
+        signer_identity: String,
         payload_hash: String,
         network_confirmation_status: String,
     },
 
     #[serde(rename = "EV9")]
-    SponsorshipRequest {
+    GasSponsorshipRequest {
         requested_gas_budget: u64,
         requester_id: String,
-        transaction_digest: String,
-    },
-
-    #[serde(rename = "EV10")]
-    SponsorshipDecision {
-        approval_status: String,
-        decision_reason: String,
-        approved_by: String,
     },
 }
