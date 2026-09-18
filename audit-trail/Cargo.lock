@@ -535,9 +535,11 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "audit-trail"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
  "anyhow",
  "axum",
  "axum-extra",
+ "base64 0.22.1",
  "bcs",
  "chrono",
  "dotenvy",
@@ -549,7 +551,9 @@ dependencies = [
  "iota-sdk 1.2.0-alpha",
  "iota-types",
  "move-core-types",
+ "p256",
  "rand 0.9.1",
+ "rand_core 0.6.4",
  "reqwest",
  "ring",
  "schemars",
@@ -2022,6 +2026,7 @@ dependencies = [
  "ff",
  "generic-array",
  "group",
+ "hkdf",
  "pem-rfc7468 0.7.0",
  "pkcs8 0.10.2",
  "rand_core 0.6.4",

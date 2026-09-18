@@ -7,6 +7,7 @@ mod utils;
 mod iota_client;
 mod iota_utils;
 mod audit;
+mod crypto;
 
 use std::{env, sync::Arc};
 use axum::{
@@ -18,7 +19,7 @@ use handlers::Handlers;
 use utils::Utils;
 use tokio::sync::mpsc; 
 use crate::{
-    constants::{LOG_DIR,IOTA_URL,ATS_PACKAGE_ID},
+    constants::{LOG_DIR,ATS_PACKAGE_ID},
     types::AuditEvent,
     audit::AuditLogger,
 };

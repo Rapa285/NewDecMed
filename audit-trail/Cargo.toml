@@ -47,5 +47,11 @@ move-core-types = { git = "https://github.com/iotaledger/iota", rev = "3d7c588ac
 bcs = "0.1.4"
 ed25519-dalek = { version = "3.0.0", features = ["rand_core"] }
 
+# --- Revisi ---
+aes-gcm = "0.10"
+p256 = { version = "0.13", features = ["ecdh", "pkcs8", "pem"] }
+base64 = "0.22"
+rand_core = "0.6"
+
 [dev-dependencies]
 tempfile = "3"
