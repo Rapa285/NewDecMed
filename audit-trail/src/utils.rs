@@ -2,28 +2,23 @@ use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 use reqwest::Body;
 
-use tokio::fs::{self, OpenOptions};
-use tokio::io::AsyncWriteExt;
+use tokio::fs::{self};
 use tokio::time::Duration;
-use anyhow::{anyhow, bail, Result, Context};
+use anyhow::{anyhow, Result, Context};
 use sha2::{Sha256, Digest};
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 use crate::{
-    constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR, IPFS_BASE_URL, AUDIT_LOG_STORE_OBJECT_ID, AUDIT_LOG_STORE_INITIAL_SHARED_VERSION}, 
+    constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR, IPFS_BASE_URL}, 
     audit_error::AuditError,
-    types::{AuditRecord, SignedEvent, AuditEvent, EncryptedSignedEvent},
+    types::{AuditRecord, AuditEvent},
     current_fn,
     iota_client::{IotaLogClient, IotaLogMetadata},
-    crypto::{ecies_decrypt_key, aes_decrypt},
 };
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
 // Revisi
-use iota_types::base_types::{IotaAddress,ObjectID};
-use iota_types::crypto::{SignatureScheme,Signature};
-use shared_crypto::intent::{Intent, IntentMessage};
+use iota_types::crypto::{Signature};
 use std::str::FromStr;
 
 pub struct Utils {}
@@ -148,10 +143,7 @@ impl Utils {
                     prev_tx_digest: prev_tx_digest.clone(),
                 };
 
-                let store_id = ObjectID::from_hex_literal(AUDIT_LOG_STORE_OBJECT_ID)
-                .expect("AUDIT_LOG_STORE_OBJECT_ID tidak valid");
-
-                match iota_client.publish_metadata(store_id, &iota_metadata).await {
+                match iota_client.publish_metadata(&iota_metadata).await {
                     Ok(result) => {
                         println!(
                             "[rotation] IOTA OK — Object ID: {} | TX: {}",
@@ -172,89 +164,6 @@ impl Utils {
         });
     }
 
-    pub fn verify_and_extract_event(
-        signed_payload: SignedEvent,
-    ) -> Result<AuditEvent> {
-
-        // 1. Parse iota_address
-        let iota_address = IotaAddress::from_str(&signed_payload.iota_address)
-            .context("iota_address tidak valid")?;
-
-        // 2. Decode signature (base64 → Signature)
-        let signature = Signature::decode_base64(&signed_payload.signature)
-            .map_err(|e| anyhow!("gagal decode signature: {e}"))?;
-
-        // 3. Reconstruct IntentMessage dari payload
-        //    Harus identik dengan yang di-sign di sisi client
-        let intent_msg = IntentMessage::new(
-            Intent::personal_message(),
-            signed_payload.payload.as_bytes().to_vec(),
-        );
-
-        // 4. Verifikasi: signature + iota_address + intent_message
-        //    verify_secure memastikan public key dalam signature
-        //    sesuai dengan iota_address → tidak perlu binding terpisah!
-        signature
-            .verify_secure(&intent_msg, iota_address, SignatureScheme::ED25519)
-            .map_err(|_| anyhow!("signature tidak valid atau bukan pemilik address"))?;
-
-        // 5. Parse AuditEvent dari payload
-        let audit_event: AuditEvent = serde_json::from_str(&signed_payload.payload)
-            .context("gagal parse payload menjadi AuditEvent")?;
-
-        Ok(audit_event)
-    }
-
-    pub fn decrypt_verify_and_extract(
-        event: EncryptedSignedEvent,
-    ) -> anyhow::Result<AuditEvent> {
-        // ── Step 1: Parse iota_address ────────────────────────────────────────
-        let iota_address = IotaAddress::from_str(&event.iota_address)
-            .map_err(|e| anyhow::anyhow!("iota_address tidak valid: {e}"))?;
-
-        // ── Step 2: Decode ciphertext dan nonce dari base64 ───────────────────
-        let ciphertext = STANDARD
-            .decode(&event.ciphertext)
-            .map_err(|e| anyhow::anyhow!("gagal decode ciphertext: {e}"))?;
-
-        let nonce = STANDARD
-            .decode(&event.nonce)
-            .map_err(|e| anyhow::anyhow!("gagal decode nonce: {e}"))?;
-
-        // ── Step 3: Verifikasi signature atas ciphertext ──────────────────────
-        //    Signature dibuat atas ciphertext (Encrypt-then-Sign).
-        //    verify_secure membuktikan pengirim adalah pemilik iota_address.
-        let signature = Signature::decode_base64(&event.signature)
-            .map_err(|e| anyhow::anyhow!("gagal decode signature: {e}"))?;
-
-        let intent_msg = IntentMessage::new(
-            Intent::personal_message(),
-            ciphertext.clone(), // harus identik dengan yang di-sign
-        );
-
-        signature
-            .verify_secure(&intent_msg, iota_address, SignatureScheme::ED25519)
-            .map_err(|_| anyhow::anyhow!(
-                "verifikasi signature gagal — \
-                 payload mungkin dimanipulasi atau bukan pemilik address {iota_address}"
-            ))?;
-
-        println!("[ATS] signature valid untuk address {iota_address}");
-
-        // ── Step 4: Dekripsi AES key dengan private key ATS ───────────────────
-        let aes_key = ecies_decrypt_key(&event.enc_aes_key, &ats_private_key_pem())
-            .map_err(|e| anyhow::anyhow!("gagal dekripsi AES key: {e}"))?;
-
-        // ── Step 5: Dekripsi payload ──────────────────────────────────────────
-        let plaintext = aes_decrypt(&ciphertext, &aes_key, &nonce)
-            .map_err(|e| anyhow::anyhow!("gagal dekripsi payload: {e}"))?;
-
-        // ── Step 6: Deserialize AuditEvent ────────────────────────────────────
-        let audit_event: AuditEvent = serde_json::from_slice(&plaintext)
-            .map_err(|e| anyhow::anyhow!("gagal parse AuditEvent: {e}"))?;
-
-        Ok(audit_event)
-    }
 
     /// HASH-CHAIN
 
@@ -289,10 +198,18 @@ impl Utils {
 
         Ok(calculated_hash == record.record_hash)
     }
+
+    pub fn construct_signature_from_str(signature: &str) -> Result<Signature,AuditError> {
+        Ok(Signature::from_str(signature)
+            .map_err(|e| anyhow!(e.to_string()).context(current_fn!()))?)
+    }
+
+    pub fn ats_private_key_pem() -> String {
+        std::env::var("ATS_PRIVATE_KEY_PEM")
+            .expect("ATS_PRIVATE_KEY_PEM harus di-set di environment")
+            .replace("\\n", "\n") // konversi literal \n dari .env ke newline asli
+    }
 }
 
-fn ats_private_key_pem() -> String {
-    std::env::var("ATS_PRIVATE_KEY_PEM")
-        .expect("ATS_PRIVATE_KEY_PEM harus di-set di environment")
-        .replace("\\n", "\n") // konversi literal \n dari .env ke newline asli
-}
+
+

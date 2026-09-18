@@ -96,7 +96,6 @@ impl IotaLogClient {
 
     pub async fn publish_metadata(
         &self,
-        store_id: ObjectID, // <-- TAMBAHAN: Masukkan Object ID dari AuditLogStore di sini
         metadata: &IotaLogMetadata,
     ) -> Result<PublishResult, AuditError> {
         let metadata_json = serde_json::to_string(metadata)

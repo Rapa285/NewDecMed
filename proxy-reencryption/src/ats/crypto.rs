@@ -11,6 +11,7 @@ use p256::{
     ecdh::EphemeralSecret,
     pkcs8::DecodePublicKey,
     PublicKey as P256PublicKey,
+    elliptic_curve::sec1::ToEncodedPoint,
 };
 use sha2::{Digest, Sha256};
 

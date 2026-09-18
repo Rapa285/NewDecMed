@@ -48,3 +48,4 @@ chrono = "0.4"
 
 # --- ATS Dependencies ---
 ed25519-dalek = { version = "2", features = ["rand_core"] }
+p256 = { version = "0.13", features = ["ecdh", "pkcs8", "pem"] }
