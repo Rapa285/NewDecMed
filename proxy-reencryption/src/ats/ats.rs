@@ -13,6 +13,7 @@ pub struct ATSClient;
 impl ATSClient {
     /// Dipanggil sekali saat startup di main.rs
     pub fn start_retry_worker() {
+        // println!("[ATS] Start Retry worker");
         spawn_retry_worker();
     }
 

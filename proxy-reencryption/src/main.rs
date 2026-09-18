@@ -37,6 +37,7 @@ use crate::ats::ATSClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+
     // Load envs from .env file
     dotenvy::dotenv()?;
     
@@ -87,6 +88,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         redis_pool,
     });
 
+    // Start ATS Worker
+    // println!("[ATS] Starting Retry Woker from main");
+    ATSClient::start_retry_worker();
+
     let protected_routes = Router::new()
         .route("/", get(|| async { "Hello, world!" }))
         .route("/medical-record", get(Handlers::get_medical_record))
@@ -133,6 +138,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
     axum::serve(listener, app).await.unwrap();
+
+
 
     Ok(())
 }

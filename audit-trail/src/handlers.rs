@@ -85,22 +85,26 @@ impl Handlers {
         let aes_key = ecies_decrypt_key(&event.enc_aes_key, &Utils::ats_private_key_pem())
             .map_err(|e| anyhow::anyhow!("gagal dekripsi AES key: {e}"))
             .code(StatusCode::BAD_REQUEST)?;
-
+        
         // ── Step 5: Dekripsi payload ──────────────────────────────────────────
         let plaintext = aes_decrypt(&ciphertext, &aes_key, &nonce)
             .map_err(|e| anyhow::anyhow!("gagal dekripsi payload: {e}"))
             .code(StatusCode::BAD_REQUEST)?;
+        
 
         // ── Step 6: Deserialize AuditEvent ────────────────────────────────────
         let audit_event: AuditEvent = serde_json::from_slice(&plaintext)
             .map_err(|e| anyhow::anyhow!("gagal parse AuditEvent: {e}"))
             .code(StatusCode::BAD_REQUEST)?;
-
+        
+        println!("[ATS] Audit Event diterima");
+        
 
         // ── Masukkan ke audit queue ───────────────────────────────────────────────
         if let Err(e) = state.audit_tx.send(audit_event).await {
             eprintln!("[audit] gagal masukkan event ke queue: {e}");
         }
+        println!("Audit event sudah masuk ke state");
 
         Ok(Json(json!({"status": "success"})))
     }

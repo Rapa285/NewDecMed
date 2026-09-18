@@ -40,6 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_handlers = Arc::new(Handlers {
         audit_tx: tx,
     });
+    
     let audit_logger = AuditLogger::new(rx);
     tokio::spawn(audit_logger.run());
 

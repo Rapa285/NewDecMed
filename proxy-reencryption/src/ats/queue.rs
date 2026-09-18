@@ -123,6 +123,7 @@ pub fn new_queue_entry(signed_payload: String, label: &str) -> QueueEntry {
 }
 
 pub fn spawn_retry_worker() {
+    // println!("[ATS] Retry Woker telah ke Spawn");
     tokio::spawn(async move {
         let client = reqwest::Client::new();
         let mut consecutive_failures: u32 = 0;
