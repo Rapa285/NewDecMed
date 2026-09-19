@@ -31,15 +31,12 @@ use umbral_pre::{PublicKey, SecretKey, SecretKeyFactory};
 
 use crate::{
     client_error::ClientError,
-    constants::{GAS_STATION_BASE_URL, HASH_SALT},
-};
-use crate::{
-    constants::IOTA_URL,
+    constants::{GAS_STATION_BASE_URL, HASH_SALT, IOTA_URL},
     current_fn,
     types::{ExecuteTxResponse, KeysEntry, ReserveGasResponse, AppState},
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
-
+    ats::{AuditEvent, AuditEventDetails, AuditOutcome, ATSClient},
 };
+
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 pub async fn reserve_gas(
@@ -153,7 +150,7 @@ pub async fn execute_tx(
         },
     };
 
-    state.ats_client.send_event(event, actor_address, actor_key_pair,"iota_transaction");
+    ATSClient::send_event_from_state(&state, event,"iota_transaction");
 
     Ok(ex_tx_res)
 }

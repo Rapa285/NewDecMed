@@ -261,7 +261,7 @@ pub async fn create_access(
                 transaction_digest: signature.encode_base64(),
             },
         };
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"create_access");
+        ATSClient::send_event_from_state(&state, event,"create_access");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -317,7 +317,7 @@ pub async fn process_qr(
                 signature_valid: true,
             },
         };
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"process_qr");
+        ATSClient::send_event_from_state(&state, event,"process_qr");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

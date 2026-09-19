@@ -289,7 +289,7 @@ pub async fn get_medical_record(
                 authorization_token_id: access_token.clone(),
             },
         };
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"get_medical_record");
+        ATSClient::send_event_from_state(&state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -461,7 +461,7 @@ pub async fn get_medical_record_update(
                 authorization_token_id: access_token.clone(),
             },
         };
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"get_medical_record_update");
+        ATSClient::send_event_from_state(&state, event,"get_medical_record_update");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

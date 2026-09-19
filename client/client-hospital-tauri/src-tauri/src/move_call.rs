@@ -114,7 +114,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -184,7 +184,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -439,7 +439,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -542,7 +542,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -619,7 +619,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -691,7 +691,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -764,7 +764,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -835,7 +835,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 

@@ -216,7 +216,7 @@ pub async fn hospital_admin_add_activation_key(
                 activation_key_id: hospital_personnel_activation_key.clone(),
             },
         };
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"hospital_admin_add_activation_key");
+        ATSClient::send_event_from_state(&state, event,"hospital_admin_add_activation_key");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -333,7 +333,7 @@ pub async fn update_personnel_activation_key(
                 activation_key_id: new_activation_key.clone(),
             },
         };
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"update_personnel_activation_key");
+        ATSClient::send_event_from_state(&state, event,"update_personnel_activation_key");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

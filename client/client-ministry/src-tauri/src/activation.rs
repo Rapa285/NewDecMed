@@ -6,7 +6,7 @@ use umbral_pre::encrypt;
 use uuid::Uuid;
 
 use crate::{
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+    ats::{AuditEvent, AuditEventDetails, AuditOutcome, ATSClient},
     client_error::ClientError,
     current_fn,
     types::{
@@ -93,7 +93,7 @@ pub async fn create_activation_key(
                 administrator_id: hospital_admin_cid.clone(),
             },
         };
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"create_activation_key/ev6");
+        ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -187,7 +187,7 @@ pub async fn update_activation_key(
                 administrator_id: payload.hospital_admin_cid.clone(),
             },
         };
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"create_activation_key/ev6");
+        ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

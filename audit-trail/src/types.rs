@@ -47,46 +47,6 @@ pub struct ExecuteTxResponse {
     pub error: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct EncryptedSignedEvent {
-    pub enc_aes_key: String,   // ECIES: ephemeral_pubkey.wrap_nonce.enc_key (base64)
-    pub ciphertext: String,    // base64: AuditEvent terenkripsi AES-256-GCM
-    pub nonce: String,         // base64: nonce AES-GCM
-    pub signature: String,     // base64: IotaSignature atas ciphertext bytes
-    pub iota_address: String,  // untuk verifikasi signature
-}
-
-// impl EncryptedSignedEvent {
-//     pub fn canonical_message(&self) -> Result<String, serde_json::Error> {
-//         let payload_str = serde_json::to_string(&self.payload)?;
-//         Ok(format!(
-//             "{}|{}|{}",
-//             payload_str,
-//             self.signature,
-//             self.iota_address
-//         ))
-//     }
-// }
-
-#[derive(Debug, Deserialize)]
-pub struct SignedEvent {
-    pub payload: String,
-    pub signature: String,    // base64: IotaSignature
-    pub iota_address: String, // wajib, untuk verifikasi
-}
-
-impl SignedEvent {
-    pub fn canonical_message(&self) -> Result<String, serde_json::Error> {
-        let payload_str = serde_json::to_string(&self.payload)?;
-        Ok(format!(
-            "{}|{}|{}",
-            payload_str,
-            self.signature,
-            self.iota_address
-        ))
-    }
-}
-
 /// Satu file audit yang dikumpulkan selama rolling window.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditBatch {
@@ -102,6 +62,14 @@ pub struct AuditBatch {
     pub ipfs_cid: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct EncryptedSignedEvent {
+    pub enc_aes_key: String,   // ECIES: ephemeral_pubkey.wrap_nonce.enc_key (base64)
+    pub ciphertext: String,    // base64: AuditEvent terenkripsi AES-256-GCM
+    pub nonce: String,         // base64: nonce AES-GCM
+    pub signature: String,     // base64: IotaSignature atas ciphertext bytes
+    pub iota_address: String,  // untuk verifikasi signature
+}
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]

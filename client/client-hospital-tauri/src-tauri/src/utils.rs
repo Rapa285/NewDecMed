@@ -154,7 +154,7 @@ pub async fn reserve_gas(
             },
         };
 
-        state.ats_client.send_event(event, actor_address, actor_key_pair,"iota_transaction");
+        ATSClient::send_event_from_state(&state, event,"iota_transaction");
 
         Ok(ex_tx_res)
     }

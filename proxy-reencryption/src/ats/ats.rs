@@ -41,34 +41,6 @@ impl ATSClient {
         });
     }
 
-    /// Versi dengan keypair eksplisit — untuk fleksibilitas
-    pub fn send_event(
-        event: AuditEvent,
-        iota_address: String,
-        iota_key_pair: &IotaKeyPair,
-        label: &'static str,
-    ) {
-        let key_pair_str = match iota_key_pair.encode() {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("[ATS][{label}] gagal encode keypair: {e:?}");
-                return;
-            }
-        };
-
-        tokio::spawn(async move {
-            let iota_key_pair = match IotaKeyPair::decode(&key_pair_str) {
-                Ok(kp) => kp,
-                Err(e) => {
-                    eprintln!("[ATS][{label}] gagal decode keypair: {e:?}");
-                    return;
-                }
-            };
-
-            Self::build_and_send(event, iota_address, &iota_key_pair, label).await;
-        });
-    }
-
     /// Core logic: enkripsi + sign + queue + kirim
     async fn build_and_send(
         event: AuditEvent,

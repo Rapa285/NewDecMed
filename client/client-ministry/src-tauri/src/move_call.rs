@@ -7,7 +7,7 @@ use iota_types::{
 };
 
 use crate::{
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+    ats::{AuditEvent, AuditEventDetails, AuditOutcome, ATSClient},
     client_error::ClientError,
     constants::GAS_BUDGET,
     current_fn,
@@ -105,7 +105,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -232,7 +232,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            state.ats_client.send_event(event, actor_address, actor_key_pair,"create_capability");
+            ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
