@@ -2,13 +2,6 @@ use serde::{Serialize, Deserialize};
 
 // ── Tipe data publik ──────────────────────────────────────────────────────────
 
-// #[derive(Debug, Clone, Serialize, Deserialize)]
-// pub struct SignedAuditEvent {
-//     pub payload: String,
-//     pub signature: String,
-//     pub iota_address: String,
-// }
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptedSignedEvent {
     pub enc_aes_key: String,   // base64
@@ -18,13 +11,16 @@ pub struct EncryptedSignedEvent {
     pub iota_address: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AuditEvent {
-    pub source_component: String,
-    pub actor: String,
+    pub source_component: AuditSourceComponent,
+    pub source_timestamp: DateTime<Utc>,
+    pub actor_id: String,
+    pub actor_type: ActorType,
+    pub target_object_type: TargetObjectType,
     pub target_object: String,
     pub outcome: AuditOutcome,
-    pub action_type: String,
+    pub action_type: AuditActionType,
 
     #[serde(flatten)]
     pub details: AuditEventDetails,
@@ -42,60 +38,108 @@ pub enum AuditOutcome {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum AuditSourceComponent {
+    HospitalClient,
+    PatientClient,
+    MinistryClient,
     ProxyReencryption,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AuditActionType {
+    Create,
+    Read,
+    Update,
+    Delete,
+    Validate,
+    Execute,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum ActorType {
+    Pasien,
+    PersonnelMedisFasyankes,
+    PersonnelAdministratifFasyankes,
+    AdminFasyankes,
+    Kementerian,
+    PREServer,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum TargetObjectType {
+    ActivationKey,
+    AccessCapability,
+    MedicalRecord,
+    MedicalRecordMetadata,
+    AccessDelegationQR,
+    AdministrativeData,
+    Nonce,
+    AccessKeys,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "event_type")]
 pub enum AuditEventDetails {
     #[serde(rename = "EV7")]
-    PREServiceRequest {
+    PreServiceOperation {
         endpoint_called: String,
         request_id: String,
         caller_component: String,
         channel_encryption: String,
+        jwt_purpose: Option<String>,
+        http_status_code: u16,
+        latency_ms: u64,
     },
-
     #[serde(rename = "EV8")]
-    IotaTransactionSubmission {
+    IotaTransaction {
         transaction_digest: String,
-        signer_identity: String,
         payload_hash: String,
+        move_function: String,
+        move_module: String,
         network_confirmation_status: String,
+        gas_used: Option<u64>,
+        sponsor_address: String,
     },
-
     #[serde(rename = "EV9")]
-    GasSponsorshipRequest {
-        requested_gas_budget: u64,
-        requester_id: String,
+    GasSponsorship {
+        gas_budget_requested: u64,
+        reserve_duration_secs: u64,
+        reservation_id: Option<u64>,
+        sponsor_address: Option<String>,
+        transaction_digest: Option<String>,
+        gas_coin_object_ids: Vec<String>,
     },
-
     #[serde(rename = "EV10")]
     RedisOperation {
         redis_key_type: String,
         operation_type: String,
-        ttl_remaining: i64,
+        ttl_remaining: Option<i64>,
+        key_pattern: String,
     },
-
     #[serde(rename = "EV11")]
-    IPFSObjectAccess {
+    IpfsOperation {
         cid: String,
         operation_type: String,
-        requester_id: String,
+        data_size: Option<u64>,
+        patient_iota_address: Option<String>,
+        ipfs_node_url: String,
     },
-
     #[serde(rename = "EV12")]
-    OnChainMetadataAccess {
-        onchain_object_id: String,
-        requester_id: String,
+    IotaMetadataOperation {
+        object_id: String,
+        object_type: String,
+        move_function: String,
+        is_mutable: bool,
+        transaction_digest: Option<String>,
+        dev_inspect_used: bool,
     },
-
     #[serde(rename = "EV13")]
     CapabilityValidation {
         capability_id: String,
-        requester_id: String,
-        validation_result: bool,
+        required_scope: String,
+        actual_scope: String,
         rejection_reason: Option<String>,
+        middleware_layer: String,
     },
 }
 

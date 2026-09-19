@@ -92,54 +92,48 @@ pub enum AuditSourceComponent {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AuditActionType {
-    Signin,
-    Signup,
-    Signout,
-    ValidatePin,
-    ValidateSeedWords,
-    UseActivationKey,
-    QrScan,
-    QrDecode,
-    QrValidate,
-    CreateAccess,
-    StoreKeys,
-    RevokeAccess,
-    ReadMedicalRecord,
-    CreateMedicalRecord,
-    UpdateMedicalRecord,
-    ReadAdministrativeData,
-    CreatePersonnelActivationKey,
-    UpdatePersonnelActivationKey,
-    CreateFacilityActivationKey,
-    UpdateFacilityActivationKey,
-    NonceRequest,
-    PreReencrypt,
-    JwtIssue,
-    AuthMiddlewareCheck,
-    IotaTransaction,
-    GasReserve,
-    GasExecute,
-    RedisGet,
-    RedisSet,
-    RedisDel,
-    IpfsUpload,
-    IpfsFetch,
-    ChainRead,
-    ChainWrite,
-    JwtValidate,
-    RoleCheck,
-    PurposeCheck,
-    ProxyCapValidate,
-    ScopeValidate,
+    Create,
+    Read,
+    Update,
+    Delete,
+    Validate,
+    Execute,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum ActorType {
+    Pasien,
+    PersonnelMedisFasyankes,
+    PersonnelAdministratifFasyankes,
+    AdminFasyankes,
+    Kementerian,
+    PREServer,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub enum TargetObjectType {
+    ActivationKey,
+    AccessCapability,
+    MedicalRecord,
+    MedicalRecordMetadata,
+    AccessDelegationQR,
+    AdministrativeData,
+    Nonce,
+    AccessKeys,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct AuditEvent {
     pub source_component: AuditSourceComponent,
-    pub actor: String,
+    pub source_timestamp: DateTime<Utc>,
+    pub actor_id: String,
+    pub actor_type: ActorType,
+    pub target_object_type: TargetObjectType,
     pub target_object: String,
     pub outcome: AuditOutcome,
     pub action_type: AuditActionType,
+
+    #[serde(flatten)]
     pub details: AuditEventDetails,
 }
 
