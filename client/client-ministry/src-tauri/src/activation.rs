@@ -4,9 +4,13 @@ use serde_json::{json, Value};
 use tauri::{async_runtime::Mutex, State};
 use umbral_pre::encrypt;
 use uuid::Uuid;
+use chrono::Utc;
 
 use crate::{
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome, ATSClient},
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, AuditSourceComponent, 
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
     client_error::ClientError,
     current_fn,
     types::{
@@ -82,15 +86,19 @@ pub async fn create_activation_key(
     // ── Audit: EV6 - Healthcare Facility Registration ─────────────────────────────────
     {
         let event = AuditEvent {
-            source_component: "MinistryClient".to_string(),
-            actor: admin_iota_address.to_string(),
-            target_object: payload.hospital_id.clone(),
+            source_component: AuditSourceComponent::MinistryClient,
+            source_timestamp: Utc::now(),
+            actor_id: admin_iota_address.to_string(),
+            actor_type: AuditActorType::Kementerian,
+            target_object_type: AuditTargetObjectType::ActivationKey,
+            target_object: activation_key.clone(),
             outcome: AuditOutcome::Success,
-            action_type: "CreateActivationKey".to_string(),
-            details: AuditEventDetails::HealthcareFacilityRegistration {
+            action_type: AuditActionType::Create,
+            details: AuditEventDetails::FacilityRegistration {
                 facility_id: payload.hospital_id.clone(),
                 facility_name: payload.hospital_name.clone(),
                 administrator_id: hospital_admin_cid.clone(),
+                transaction_digest : tx_digest.clone(),
             },
         };
         ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
@@ -174,21 +182,21 @@ pub async fn update_activation_key(
         .context(current_fn!())?;
 
     // ── Audit: EV6 - Healthcare Facility Registration ─────────────────────────────────
-    {
-        let event = AuditEvent {
-            source_component: "ministry-client".to_string(),
-            actor: admin_iota_address.to_string(),
-            target_object: hospital_id.clone(),
-            outcome: AuditOutcome::Success,
-            action_type: "CreateActivationKey".to_string(),
-            details: AuditEventDetails::HealthcareFacilityRegistration {
-                facility_id: hospital_id.clone(),
-                facility_name: "".to_string(),
-                administrator_id: payload.hospital_admin_cid.clone(),
-            },
-        };
-        ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
-    }
+    // {
+    //     let event = AuditEvent {
+    //         source_component: "ministry-client".to_string(),
+    //         actor: admin_iota_address.to_string(),
+    //         target_object: hospital_id.clone(),
+    //         outcome: AuditOutcome::Success,
+    //         action_type: "CreateActivationKey".to_string(),
+    //         details: AuditEventDetails::HealthcareFacilityRegistration {
+    //             facility_id: hospital_id.clone(),
+    //             facility_name: "".to_string(),
+    //             administrator_id: payload.hospital_admin_cid.clone(),
+    //         },
+    //     };
+    //     ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
+    // }
     // ──────────────────────────────────────────────────────────────────────────────────
 
     Ok(SuccessResponse {

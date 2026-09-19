@@ -132,25 +132,25 @@ pub async fn execute_tx(
 
     // println!("Audit: IOTA tx data: {:?}", data);
 
-    let event = AuditEvent {
-        source_component: "ministry-client".to_string(),
-        actor: "actor".to_string(), // Sesuaikan actor jika ada
-        target_object: "iota_transaction".to_string(),
-        outcome: if is_success {
-            AuditOutcome::Success
-        } else {
-            AuditOutcome::Failure
-        },
-        action_type: "IOTA_TRANSACTION".to_string(),
-        details: AuditEventDetails::IotaTransactionSubmission {
-            transaction_digest,
-            payload_hash,
-            network_confirmation_status,
-            signer_identity,
-        },
-    };
+    // let event = AuditEvent {
+    //     source_component: "ministry-client".to_string(),
+    //     actor: "actor".to_string(), // Sesuaikan actor jika ada
+    //     target_object: "iota_transaction".to_string(),
+    //     outcome: if is_success {
+    //         AuditOutcome::Success
+    //     } else {
+    //         AuditOutcome::Failure
+    //     },
+    //     action_type: "IOTA_TRANSACTION".to_string(),
+    //     details: AuditEventDetails::IotaTransactionSubmission {
+    //         transaction_digest,
+    //         payload_hash,
+    //         network_confirmation_status,
+    //         signer_identity,
+    //     },
+    // };
 
-    ATSClient::send_event_from_state(&state, event,"iota_transaction");
+    // ATSClient::send_event_from_state(&state, event,"iota_transaction");
 
     Ok(ex_tx_res)
 }

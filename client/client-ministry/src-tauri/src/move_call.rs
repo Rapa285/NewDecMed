@@ -91,22 +91,22 @@ impl MoveCall {
             .context(current_fn!())?;
 
         // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // {
+        //     let requester = sender.to_string();
 
-            let event = AuditEvent {
-                source_component: "ministry-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA,
-                    requester_id: requester,
-                },
-            };
-            ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
+        //     let event = AuditEvent {
+        //         source_component: "ministry-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorshipRequest {
+        //             requested_gas_budget: NANOS_PER_IOTA,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //     ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
         // ──────────────────────────────────────────────────────────────────────────────────
 
 
@@ -218,22 +218,22 @@ impl MoveCall {
             .context(current_fn!())?;
 
         // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // {
+        //     let requester = sender.to_string();
 
-            let event = AuditEvent {
-                source_component: "ministry-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA,
-                    requester_id: requester,
-                },
-            };
-            ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
+        //     let event = AuditEvent {
+        //         source_component: "ministry-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorshipRequest {
+        //             requested_gas_budget: NANOS_PER_IOTA,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //     ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
         // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)

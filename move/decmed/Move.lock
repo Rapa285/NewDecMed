@@ -53,6 +53,6 @@ published-version = "1"
 
 [env.local-vps]
 chain-id = "50407b7e"
-original-published-id = "0x12fe24253a579d8d3d156621a9ef807a24db38dafa6528d0498f3935e55f72ff"
-latest-published-id = "0x12fe24253a579d8d3d156621a9ef807a24db38dafa6528d0498f3935e55f72ff"
+original-published-id = "0xc5a2ffc7a153e3715cb48863a149a68322cb25e2169fffac024556074e1bdb5a"
+latest-published-id = "0xc5a2ffc7a153e3715cb48863a149a68322cb25e2169fffac024556074e1bdb5a"
 published-version = "1"

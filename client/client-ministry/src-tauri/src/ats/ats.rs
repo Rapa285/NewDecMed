@@ -19,7 +19,9 @@ impl ATSClient {
     /// Dipanggil sekali saat startup di main.rs
     pub fn start_retry_worker() {
         // println!("[ATS] Start Retry worker");
-        spawn_retry_worker();
+        tauri::async_runtime::spawn(async move {
+            spawn_retry_worker();
+        });
     }
 
     /// Entry point utama pengiriman event dari PRE server.

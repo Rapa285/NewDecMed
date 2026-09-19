@@ -14,8 +14,8 @@ pub struct AuditEvent {
     pub source_component: AuditSourceComponent,
     pub source_timestamp: DateTime<Utc>,
     pub actor_id: String,
-    pub actor_type: ActorType,
-    pub target_object_type: TargetObjectType,
+    pub actor_type: AuditActorType,
+    pub target_object_type: AuditTargetObjectType,
     pub target_object: String,
     pub outcome: AuditOutcome,
     pub action_type: AuditActionType,
@@ -54,7 +54,7 @@ pub enum AuditActionType {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum ActorType {
+pub enum AuditActorType {
     Pasien,
     PersonnelMedisFasyankes,
     PersonnelAdministratifFasyankes,
@@ -64,7 +64,7 @@ pub enum ActorType {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub enum TargetObjectType {
+pub enum AuditTargetObjectType {
     ActivationKey,
     AccessCapability,
     MedicalRecord,
