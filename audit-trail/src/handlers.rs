@@ -30,84 +30,62 @@ const DEFAULT_LOGS_PAGE_SIZE: usize = 25;
 const MAX_LOGS_PAGE_SIZE: usize = 100;
 
 pub struct Handlers {
-    pub audit_tx: Sender<AuditEvent>,
+    pub audit_tx: Sender<EncryptedSignedEvent>,
 }
 
 impl Handlers {
 
     pub async fn handle_event(
         State(state): State<Arc<Handlers>>,
-        Json(event): Json<EncryptedSignedEvent>, // ← ganti dari SignedEvent
+        Json(event): Json<EncryptedSignedEvent>,
     ) -> Result<impl IntoResponse, AuditError> {
 
-        // ── Step 1: Parse iota_address ────────────────────────────────────────
-        let iota_address = IotaAddress::from_str(&event.iota_address)
-            .map_err(|_| anyhow!("Invalid Iota Address"))
-            .code(StatusCode::BAD_REQUEST)?;
-
-        // ── Step 2: Decode ciphertext dan nonce dari base64 ───────────────────
-        let ciphertext = STANDARD
-            .decode(&event.ciphertext)
-            .map_err(|_| anyhow!("Invalid ciphertext"))
-            .code(StatusCode::BAD_REQUEST)?;
-
-        let nonce = STANDARD
-            .decode(&event.nonce)
-            .map_err(|_| anyhow!("Invalid nonce"))
-            .code(StatusCode::BAD_REQUEST)?;
-
-        // ── Step 3: Verifikasi signature atas ciphertext ──────────────────────
-        let signature = Utils::construct_signature_from_str(&event.signature)
-            .map_err(|_| anyhow!("Invalid signature"))
-            .code(StatusCode::BAD_REQUEST)?;
-
-        let intent_message = IntentMessage::new(Intent::personal_message(), ciphertext.clone());
-
-        // signature
-        //     .verify_secure(&intent_msg, iota_address, SignatureScheme::ED25519)
-        //     .map_err(|_| anyhow::anyhow!(
-        //         "verifikasi signature gagal — \
-        //          payload mungkin dimanipulasi atau bukan pemilik address {iota_address}"
-        //     ))?;
-
-        let _ = signature
-            .verify_secure(
-                &intent_message,
-                iota_address,
-                SignatureScheme::ED25519,
-            )
-            .map_err(|_| anyhow!("Failed to verify signature"))
-            .code(StatusCode::UNAUTHORIZED)?;
-
-        println!("[ATS] signature valid untuk address {iota_address}");
-
-        // ── Step 4: Dekripsi AES key dengan private key ATS ───────────────────
-        let aes_key = ecies_decrypt_key(&event.enc_aes_key, &Utils::ats_private_key_pem())
-            .map_err(|e| anyhow::anyhow!("gagal dekripsi AES key: {e}"))
-            .code(StatusCode::BAD_REQUEST)?;
-        
-        // ── Step 5: Dekripsi payload ──────────────────────────────────────────
-        let plaintext = aes_decrypt(&ciphertext, &aes_key, &nonce)
-            .map_err(|e| anyhow::anyhow!("gagal dekripsi payload: {e}"))
-            .code(StatusCode::BAD_REQUEST)?;
-        
-
-        // ── Step 6: Deserialize AuditEvent ────────────────────────────────────
-        let audit_event: AuditEvent = serde_json::from_slice(&plaintext)
-            .map_err(|e| anyhow::anyhow!("gagal parse AuditEvent: {e}"))
-            .code(StatusCode::BAD_REQUEST)?;
-        
-        println!("[ATS] Audit Event diterima");
-        
-
-        // ── Masukkan ke audit queue ───────────────────────────────────────────────
-        if let Err(e) = state.audit_tx.send(audit_event).await {
-            eprintln!("[audit] gagal masukkan event ke queue: {e}");
+        // Hanya verifikasi signature — tidak ada dekripsi
+        if let Err(e) = Utils::verify_event_signature(&event) {
+            eprintln!("[audit] event ditolak — signature tidak valid: {e}");
+            return Ok(Json(json!({
+                "status": "error",
+                "message": "signature verification failed"
+                // Sengaja tidak expose detail error ke pengirim
+            })));
         }
-        println!("Audit event sudah masuk ke state");
+
+        if let Err(e) = state.audit_tx.send(event).await {
+            eprintln!("[audit] gagal kirim ke queue: {e}");
+            return Ok(Json(json!({"status": "error", "message": "internal error"})));
+        }
 
         Ok(Json(json!({"status": "success"})))
     }
+
+    // pub async fn get_decrypted_logs(
+    //     Query(params): Query<GetLogsQueryParams>,
+    // ) -> Result<impl IntoResponse, AuditError> {
+    //     // Baca dari file log
+    //     let records = read_audit_records_from_file().await?;
+
+    //     let decrypted: Vec<serde_json::Value> = records
+    //         .iter()
+    //         .map(|record| {
+    //             // Dekripsi saat audit
+    //             match Utils::decrypt_event(&record.encrypted_event) {
+    //                 Ok(event) => json!({
+    //                     "record_id": record.record_id,
+    //                     "timestamp": record.timestamp,
+    //                     "prev_record_hash": record.prev_record_hash,
+    //                     "record_hash": record.record_hash,
+    //                     "event": event, // plaintext hanya di response, tidak di storage
+    //                 }),
+    //                 Err(e) => json!({
+    //                     "record_id": record.record_id,
+    //                     "error": format!("gagal dekripsi: {e}"),
+    //                 }),
+    //             }
+    //         })
+    //         .collect();
+
+    //     Ok(Json(json!({ "data": decrypted })))
+    // }
 
     pub async fn get_logs(
         Query(params): Query<GetLogsQueryParams>,

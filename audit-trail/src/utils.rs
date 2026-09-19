@@ -10,16 +10,22 @@ use sha2::{Sha256, Digest};
 use crate::{
     constants::{LOG_ROTATION_INTERVAL_SECS, LOG_FILE_PATH, LOG_DIR, IPFS_BASE_URL}, 
     audit_error::AuditError,
-    types::{AuditRecord, AuditEvent},
+    types::{AuditRecord, AuditEvent, EncryptedSignedEvent},
     current_fn,
     iota_client::{IotaLogClient, IotaLogMetadata},
+    crypto::{ecies_decrypt_key, aes_decrypt},
+
 };
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 
 // Revisi
-use iota_types::crypto::{Signature};
+use iota_types::crypto::{Signature,SignatureScheme,IotaSignature};
 use std::str::FromStr;
+use shared_crypto::intent::{Intent, IntentMessage};
+use iota_types::base_types::{IotaAddress};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
+
 
 pub struct Utils {}
 
@@ -171,13 +177,14 @@ impl Utils {
         record_id: &Uuid,
         timestamp: &DateTime<Utc>,
         prev_record_hash: Option<&str>,
-        event: &AuditEvent,
+        encrypted_event: &EncryptedSignedEvent,
     ) -> Result<String, serde_json::Error> {
         let hash_input = serde_json::json!({
             "record_id": record_id,
             "timestamp": timestamp,
             "prev_record_hash": prev_record_hash,
-            "event": event,
+            "ciphertext": encrypted_event.ciphertext,
+            "iota_address": encrypted_event.iota_address,
         });
 
         let serialized = serde_json::to_vec(&hash_input)?;
@@ -208,6 +215,70 @@ impl Utils {
         std::env::var("ATS_PRIVATE_KEY_PEM")
             .expect("ATS_PRIVATE_KEY_PEM harus di-set di environment")
             .replace("\\n", "\n") // konversi literal \n dari .env ke newline asli
+    }
+
+    pub fn verify_event_signature(
+        event: &EncryptedSignedEvent,
+    ) -> anyhow::Result<()> {
+        // 1. Parse iota_address
+        let iota_address = IotaAddress::from_str(&event.iota_address)
+            .map_err(|e| anyhow::anyhow!("iota_address tidak valid: {e}"))?;
+
+        // 2. Decode ciphertext
+        let ciphertext = STANDARD
+            .decode(&event.ciphertext)
+            .map_err(|e| anyhow::anyhow!("gagal decode ciphertext: {e}"))?;
+
+        // ── Step 3: Verifikasi signature atas ciphertext ──────────────────────
+        let signature = Utils::construct_signature_from_str(&event.signature)
+            .map_err(|_| anyhow!("Invalid signature"))?;
+
+        let intent_msg = IntentMessage::new(
+            Intent::personal_message(),
+            ciphertext,
+        );
+
+        let _ = signature
+            .verify_secure(
+                &intent_msg,
+                iota_address,
+                SignatureScheme::ED25519,
+            )
+            .map_err(|_| anyhow!("Failed to verify signature"))?;
+
+        Ok(())
+    }
+
+    /// Dekripsi event — dipanggil saat audit, bukan saat terima
+    pub fn decrypt_event(
+        event: &EncryptedSignedEvent,
+    ) -> anyhow::Result<AuditEvent> {
+        let private_key_pem = std::env::var("ATS_PRIVATE_KEY_PEM")
+            .expect("ATS_PRIVATE_KEY_PEM harus di-set")
+            .replace("\\n", "\n");
+
+        // 1. Decode ciphertext dan nonce
+        let ciphertext = STANDARD
+            .decode(&event.ciphertext)
+            .map_err(|e| anyhow::anyhow!("gagal decode ciphertext: {e}"))?;
+
+        let nonce = STANDARD
+            .decode(&event.nonce)
+            .map_err(|e| anyhow::anyhow!("gagal decode nonce: {e}"))?;
+
+        // 2. Dekripsi AES key dengan private key ATS
+        let aes_key = ecies_decrypt_key(&event.enc_aes_key, &private_key_pem)
+            .map_err(|e| anyhow::anyhow!("gagal dekripsi AES key: {e}"))?;
+
+        // 3. Dekripsi payload
+        let plaintext = aes_decrypt(&ciphertext, &aes_key, &nonce)
+            .map_err(|e| anyhow::anyhow!("gagal dekripsi payload: {e}"))?;
+
+        // 4. Deserialize
+        let audit_event: AuditEvent = serde_json::from_slice(&plaintext)
+            .map_err(|e| anyhow::anyhow!("gagal parse AuditEvent: {e}"))?;
+
+        Ok(audit_event)
     }
 }
 

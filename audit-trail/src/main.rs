@@ -20,7 +20,7 @@ use utils::Utils;
 use tokio::sync::mpsc; 
 use crate::{
     constants::{LOG_DIR,ATS_PACKAGE_ID},
-    types::AuditEvent,
+    types::{AuditEvent,EncryptedSignedEvent},
     audit::AuditLogger,
 };
 
@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 2. Buat antrean mpsc (kapasitas 10.000 event)
-    let (tx, rx) = mpsc::channel::<AuditEvent>(10000);
+    let (tx, rx) = mpsc::channel::<EncryptedSignedEvent>(10000);
 
     // 3. Simpan Sender (tx) ke dalam State Handlers
     let app_handlers = Arc::new(Handlers {

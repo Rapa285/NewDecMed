@@ -29,6 +29,6 @@ flavor = "iota"
 
 [env.local-vps]
 chain-id = "50407b7e"
-original-published-id = "0x6b54d138b22a869d98ae27922772003a4a5c492e5fd05af6fdd92090c1142a2e"
-latest-published-id = "0x6b54d138b22a869d98ae27922772003a4a5c492e5fd05af6fdd92090c1142a2e"
+original-published-id = "0x5a2cb9800f3bc4517e5203f846da57a35f590e3bf0faac434185addd41cdf3ee"
+latest-published-id = "0x5a2cb9800f3bc4517e5203f846da57a35f590e3bf0faac434185addd41cdf3ee"
 published-version = "1"

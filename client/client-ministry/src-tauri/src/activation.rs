@@ -182,22 +182,27 @@ pub async fn update_activation_key(
         .context(current_fn!())?;
 
     // ── Audit: EV6 - Healthcare Facility Registration ─────────────────────────────────
-    // {
-    //     let event = AuditEvent {
-    //         source_component: "ministry-client".to_string(),
-    //         actor: admin_iota_address.to_string(),
-    //         target_object: hospital_id.clone(),
-    //         outcome: AuditOutcome::Success,
-    //         action_type: "CreateActivationKey".to_string(),
-    //         details: AuditEventDetails::HealthcareFacilityRegistration {
-    //             facility_id: hospital_id.clone(),
-    //             facility_name: "".to_string(),
-    //             administrator_id: payload.hospital_admin_cid.clone(),
-    //         },
-    //     };
-    //     ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
-    // }
+    {
+        let event = AuditEvent {
+            source_component: AuditSourceComponent::MinistryClient,
+            source_timestamp: Utc::now(),
+            actor_id: admin_iota_address.to_string(),
+            actor_type: AuditActorType::Kementerian,
+            target_object_type: AuditTargetObjectType::ActivationKey,
+            target_object: activation_key.clone(),
+            outcome: AuditOutcome::Success,
+            action_type: AuditActionType::Update,
+            details: AuditEventDetails::FacilityRegistration {
+                facility_id: hospital_id.clone(),
+                facility_name: "payload.hospital_name.clone()".to_string(),
+                administrator_id: payload.hospital_admin_cid.clone(),
+                transaction_digest : tx_digest.clone(),
+            },
+        };
+        ATSClient::send_event_from_state(&state, event,"update_activation_key/ev6");
+    }
     // ──────────────────────────────────────────────────────────────────────────────────
+
 
     Ok(SuccessResponse {
         data: (),

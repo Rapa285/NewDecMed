@@ -62,7 +62,7 @@ pub struct AuditBatch {
     pub ipfs_cid: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct EncryptedSignedEvent {
     pub enc_aes_key: String,   // ECIES: ephemeral_pubkey.wrap_nonce.enc_key (base64)
     pub ciphertext: String,    // base64: AuditEvent terenkripsi AES-256-GCM
@@ -145,7 +145,7 @@ pub struct AuditRecord {
     pub record_hash: String,
     
     #[serde(flatten)] 
-    pub event: AuditEvent,
+    pub event: EncryptedSignedEvent,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

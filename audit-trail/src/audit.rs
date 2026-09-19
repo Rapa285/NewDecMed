@@ -3,17 +3,17 @@ use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc::Receiver; // ← tokio, bukan std
 use chrono::Utc;
 use uuid::Uuid;
-use crate::types::{AuditEvent, AuditRecord};
+use crate::types::{AuditEvent, AuditRecord, EncryptedSignedEvent};
 use crate::constants::LOG_FILE_PATH;
 use crate::utils::Utils;
 
 pub struct AuditLogger {
-    rx: Receiver<AuditEvent>,
+    rx: Receiver<EncryptedSignedEvent>,
     prev_record_hash: Option<String>,
 }
 
 impl AuditLogger {
-    pub fn new(rx: Receiver<AuditEvent>) -> Self {
+    pub fn new(rx: Receiver<EncryptedSignedEvent>) -> Self {
         Self {
             rx,
             prev_record_hash: None,
@@ -21,38 +21,29 @@ impl AuditLogger {
     }
 
     pub async fn run(mut self) {
-        // tokio::sync::mpsc::Receiver menggunakan .recv().await → Option<T>
-        while let Some(event) = self.rx.recv().await {
-
-            // 1. Buat AuditRecord menggunakan hash sebelumnya
+        while let Some(encrypted_event) = self.rx.recv().await {
             let record = match create_audit_record(
-                event,
+                encrypted_event,
                 self.prev_record_hash.clone(),
             ) {
-                Ok(record) => record,
+                Ok(r) => r,
                 Err(e) => {
-                    eprintln!(
-                        "[audit] gagal membuat AuditRecord: {e}"
-                    );
+                    eprintln!("[audit] gagal buat record: {e}");
                     continue;
                 }
             };
 
-            // 2. Tulis ke file log
             if let Err(e) = write_audit_record(&record).await {
-                eprintln!(
-                    "[audit] gagal menulis AuditRecord: {e}"
-                );
+                eprintln!("[audit] gagal tulis record: {e}");
             }
 
-            // 3. Update hash sebelumnya
             self.prev_record_hash = Some(record.record_hash.clone());
         }
     }
 }
 
 pub fn create_audit_record(
-    event: AuditEvent,
+    event: EncryptedSignedEvent,
     prev_record_hash: Option<String>,
 ) -> Result<AuditRecord, serde_json::Error> {
     let record_id = Uuid::now_v7();
