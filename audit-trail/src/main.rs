@@ -10,7 +10,7 @@ mod audit;
 mod crypto;
 
 use std::{
-    env, 
+    env,
     sync::{Arc, atomic::{AtomicUsize, Ordering}},
 };
 use axum::{
@@ -20,10 +20,10 @@ use axum::{
 use tokio::fs;
 use handlers::Handlers;
 use utils::Utils;
-use tokio::sync::mpsc; 
+use tokio::sync::mpsc;
 use crate::{
-    constants::{LOG_DIR,ATS_PACKAGE_ID},
-    types::{AuditEvent,EncryptedSignedEvent},
+    constants::{LOG_DIR, ATS_PACKAGE_ID},
+    types::EncryptedSignedEvent,
     audit::AuditLogger,
 };
 
@@ -36,48 +36,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("Peringatan: Gagal membuat folder log: {}", e);
     }
 
-    // 2. Buat antrean mpsc (kapasitas 10.000 event)
-    let (tx, rx) = mpsc::channel::<EncryptedSignedEvent>(10000);
+    // 2. Channel mpsc untuk event masuk (kapasitas 10.000)
+    let (tx, rx) = mpsc::channel::<EncryptedSignedEvent>(10_000);
 
-    // Buat counter yang bisa dibagikan ke beberapa thread
-    let record_counter = Arc::new(AtomicUsize::new(0));
-
-    // Clone untuk diberikan ke fungsi Writer
-    let writer_counter = Arc::clone(&record_counter);
-
-    // Clone untuk diberikan ke fungsi Rotasi (loop rotasi)
+    // 3. Counter record (dipakai writer + rotator)
+    let record_counter = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let writer_counter  = Arc::clone(&record_counter);
     let rotator_counter = Arc::clone(&record_counter);
 
-    // 3. Simpan Sender (tx) ke dalam State Handlers
-    let app_handlers = Arc::new(Handlers {
-        audit_tx: tx,
-    });
-    
-    let audit_logger = AuditLogger::new(rx,writer_counter);
+    // 4. State Handlers
+    let app_handlers = Arc::new(Handlers { audit_tx: tx });
+
+    // 5. Jalankan AuditLogger (tulis ke file)
+    let audit_logger = AuditLogger::new(rx, writer_counter);
     tokio::spawn(audit_logger.run());
 
-    // 4. Jalankan worker dari utils.rs
-    Utils::spawn_log_rotation_worker(ATS_PACKAGE_ID.to_string(),rotator_counter); // Melakukan rotasi dan upload berkala
+    // 6. Jalankan worker rotasi + upload IPFS + publish IOTA
+    Utils::spawn_log_rotation_worker(ATS_PACKAGE_ID.to_string(), rotator_counter);
 
-
-    // 6. Setup Router Axum
+    // 7. Router
+    //
+    //   POST /api/events          ← terima event dari klien (butuh Handlers state)
+    //   GET  /api/logs/metadata   ← daftar log on-chain (paginasi offset)
+    //   GET  /api/logs/record     ← fetch + verify + decrypt satu file log dari IPFS
+    //
     let app = Router::new()
+        // --- route yang butuh Handlers state ---
         .route("/api/events", post(Handlers::handle_event))
         .with_state(app_handlers)
-        // GET /api/logs tidak butuh Handlers state, jadi dipasang
-        // terpisah dari router ber-state di atas.
-        .route("/api/get-logs-metadata", get(Handlers::get_logs_metadata));
+        // --- route stateless (tidak butuh Handlers) ---
+        .route("/api/logs/metadata", get(Handlers::get_logs_metadata))
+        .route("/api/logs/record",   get(Handlers::get_record_by_cid));
 
-    let port = env::var("PORT")?;
-
+    let port = env::var("PORT").unwrap_or_else(|_| "3000".to_string());
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
-        .await
-        .unwrap();
-    
-    println!("Service berjalan dan mendengarkan di port {}...", port);
+        .await?;
 
-    axum::serve(listener, app).await.unwrap();
+    println!("[ATS] berjalan di port {port}");
+    axum::serve(listener, app).await?;
 
     Ok(())
-
 }

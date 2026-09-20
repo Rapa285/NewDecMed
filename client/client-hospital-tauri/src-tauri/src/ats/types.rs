@@ -1,13 +1,15 @@
 use serde::{Serialize, Deserialize};
+use chrono::{DateTime, Utc};
 
 // ── Tipe data publik ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SignedAuditEvent {
-    pub payload: String,
-    pub signature: String,    // base64: IotaSignature
-    pub public_key: String,   // hex: raw public key bytes
-    pub iota_address: String, // untuk verifikasi langsung
+pub struct EncryptedSignedEvent {
+    pub enc_aes_key: String,   // base64
+    pub ciphertext: String,    // base64
+    pub nonce: String,         // base64
+    pub signature: String,     // base64: IotaSignature atas ciphertext bytes
+    pub iota_address: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -17,6 +19,7 @@ pub struct AuditEvent {
     pub event: Event
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Event {
     pub actor_id: String,
     pub actor_type: AuditActorType,
@@ -79,6 +82,7 @@ pub enum AuditTargetObjectType {
     Nonce,
     AccessKeys,
     Transaction,
+    GasRequest,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

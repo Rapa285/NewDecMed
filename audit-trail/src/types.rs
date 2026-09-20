@@ -323,3 +323,58 @@ pub struct GetLogsResponse {
     pub cursor: u64,
     pub has_next_page: bool,
 }
+
+
+ 
+/// GET /api/logs/record?cid=<cid>
+#[derive(Debug, Deserialize)]
+pub struct GetRecordByCidQueryParams {
+    /// Content Identifier IPFS dari file log yang ingin di-fetch & dekripsi.
+    pub cid: String,
+}
+ 
+// ── Response body ─────────────────────────────────────────────────────────────
+ 
+/// Satu record yang sudah diverifikasi & didekripsi.
+#[derive(Debug, Serialize)]
+pub struct DecryptedRecordResult {
+    /// UUID record
+    pub record_id: String,
+ 
+    /// Waktu record dibuat di ATS server
+    pub timestamp: DateTime<Utc>,
+ 
+    /// Hash record sebelumnya (null untuk record pertama)
+    pub prev_record_hash: Option<String>,
+ 
+    /// Hash record ini sendiri — sudah diverifikasi ulang
+    pub record_hash: String,
+ 
+    /// IOTA address pengirim event
+    pub iota_address: String,
+ 
+    /// true jika IOTA signature pada ciphertext valid
+    pub signature_valid: bool,
+ 
+    /// Pesan error dekripsi, null jika berhasil
+    pub decrypt_error: Option<String>,
+ 
+    /// Isi event setelah didekripsi — null jika dekripsi gagal
+    pub event: Option<crate::types::AuditEvent>,
+}
+ 
+/// Response keseluruhan GET /api/logs/record
+#[derive(Debug, Serialize)]
+pub struct GetRecordByCidResponse {
+    /// CID yang di-query
+    pub cid: String,
+ 
+    /// Jumlah total record dalam file ini
+    pub total_records: u64,
+ 
+    /// true jika seluruh hash chain dalam file valid
+    pub chain_valid: bool,
+ 
+    /// Daftar record yang sudah diproses
+    pub results: Vec<DecryptedRecordResult>,
+}

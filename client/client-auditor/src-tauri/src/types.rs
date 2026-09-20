@@ -1,71 +1,54 @@
 use serde::{Deserialize, Serialize};
 
-/// Mirrors `IotaLogMetadata` from the `audit-trail` service
-/// (see audit-trail/src/iota_client.rs). Kept in sync manually since
-/// the auditor client doesn't share a crate with the backend.
+/// Matches the AuditEvent structure stored in ATS (as JSON in on-chain `json_data`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogMetadata {
-    pub version: String,
-    pub log_sequence_number: u64,
-    pub rotation_timestamp: chrono::DateTime<chrono::Utc>,
-    pub ipfs_cid: String,
-    pub file_hash: String,
-    pub first_record_hash: String,
-    pub final_record_hash: String,
-    pub record_count: u64,
-    pub prev_tx_digest: Option<String>,
+pub struct AuditLogEntry {
+    pub source_component: Option<String>,
+    pub actor: Option<String>,
+    pub target_object: Option<String>,
+    pub outcome: Option<String>,
+    pub action_type: Option<String>,
+    pub details: Option<serde_json::Value>,
+    /// Timestamp injected by ATS before storing
+    #[serde(default)]
+    pub timestamp: Option<String>,
+    /// Sequential index in on-chain store
+    #[serde(default)]
+    pub sequence: Option<u64>,
 }
 
-/// Mirrors `LogRecordOnChain`: the on-chain object id plus the
-/// metadata payload published for a rotated log batch.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LogRecord {
-    pub object_id: String,
-    pub metadata: LogMetadata,
-}
-
-/// Expected shape of `GET {base_url}/api/logs` on the audit-trail service.
+/// A page of raw on-chain log records returned by the ATS metadata endpoint.
+/// The ATS HTTP service wraps each `LogRecord.json_data` string here.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct LogsResponse {
-    pub data: Vec<LogRecord>,
-    #[serde(default)]
-    pub next_cursor: Option<String>,
-    #[serde(default)]
+pub struct LogsMetadataResponse {
+    /// Parsed audit log entries
+    pub data: Vec<AuditLogEntry>,
+    /// Total count stored on-chain
+    pub total: u64,
+    /// Cursor used for this page
+    pub cursor: u64,
+    /// How many were returned
+    pub limit: u64,
+    /// Whether more records exist after this page
     pub has_next_page: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FetchLogsParams {
-    pub cursor: Option<String>,
-    pub limit: Option<usize>,
-}
-
-/// A single line inside a rotated audit-trail log file, once
-/// downloaded from IPFS and parsed. Mirrors `AuditRecord` /
-/// `AuditEvent` from `audit-trail/src/types.rs`, kept loose (Value)
-/// here since the auditor only needs to display it, not act on it.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AuditLogEntry {
-    pub record_id: String,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
-    pub prev_record_hash: Option<String>,
-    pub record_hash: String,
-    #[serde(flatten)]
-    pub event: serde_json::Value,
+    pub cursor: Option<u64>,
+    pub limit: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
-    pub audit_trail_base_url: String,
-    pub ipfs_gateway_base_url: String,
+    pub ats_base_url: String,
 }
 
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            // Matches audit-trail/.env PORT=3000 default.
-            audit_trail_base_url: "http://localhost:3000".to_string(),
-            ipfs_gateway_base_url: "http://103.107.4.68:8080".to_string(),
+            // Matches ATS_BASE_URL from constants.rs in ministry/hospital clients
+            ats_base_url: "http://localhost:3000".to_string(),
         }
     }
 }

@@ -1059,27 +1059,6 @@ impl Handlers {
             .await
             .context(current_fn!())?;
         let created_at = Utils::sys_time_to_iso(std::time::SystemTime::now());
-        
-        // ── Audit: EV11 - IPFS Object Access ──────────────────────────────────────────────
-        {
-            let cid_clone = cid.clone();
-            let requester = current_user.iota_address.clone();
-
-            let event = Event {
-                source_component: "proxy-reencryption".to_string(),
-                actor: requester.clone(),
-                target_object: cid_clone.clone(),
-                outcome: AuditOutcome::Success,
-                action_type: "IPFS_UPLOAD".to_string(),
-                details: AuditEventDetails::IPFSObjectAccess {
-                    cid: cid_clone,
-                    operation_type: "Upload".to_string(),
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"update_medical_record");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
 
         let medical_metadata = MedicalMetadata {
             capsule: medical_metadata.capsule,

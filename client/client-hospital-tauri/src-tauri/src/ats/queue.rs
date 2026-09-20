@@ -1,5 +1,3 @@
-// src/ats/queue.rs
-
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -8,36 +6,35 @@ use tokio::fs::{self, OpenOptions};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use uuid::Uuid;
 
+use super::constants::{ATS_ENDPOINT, ATS_QUEUE_DIR};
+
 const QUEUE_FILE: &str = "ats_queue.jsonl";
 const RETRY_BASE_SECS: u64 = 5;
-const RETRY_MAX_SECS: u64 = 300;
+const RETRY_MAX_SECS: u64 = 60;
 const MAX_ATTEMPTS_BEFORE_SKIP: u32 = 10;
 
+/// Entry yang disimpan di queue.
+/// `signed_payload` sudah berupa JSON `EncryptedSignedEvent` yang siap dikirim.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueueEntry {
     pub id: String,
-    /// JSON dari SignedAuditEvent yang sudah ditandatangani dengan IOTA keypair.
-    /// Langsung bisa dikirim ke ATS server tanpa proses ulang.
-    pub signed_payload: String,
+    pub signed_payload: String, // JSON EncryptedSignedEvent
     pub label: String,
     pub created_at: String,
     pub attempt_count: u32,
 }
 
-#[derive(Clone)]
-pub struct AtsQueue {
-    file_path: PathBuf,
-}
+pub struct AtsQueue;
 
 impl AtsQueue {
-    pub fn new(queue_dir: &str) -> Self {
-        Self {
-            file_path: PathBuf::from(queue_dir).join(QUEUE_FILE),
-        }
+    fn file_path() -> PathBuf {
+        PathBuf::from(ATS_QUEUE_DIR).join(QUEUE_FILE)
     }
 
-    pub async fn push(&self, entry: QueueEntry) -> Result<(), String> {
-        if let Some(parent) = self.file_path.parent() {
+    pub async fn push(entry: QueueEntry) -> Result<(), String> {
+        let file_path = Self::file_path();
+
+        if let Some(parent) = file_path.parent() {
             fs::create_dir_all(parent)
                 .await
                 .map_err(|e| format!("gagal buat direktori queue: {e}"))?;
@@ -50,19 +47,19 @@ impl AtsQueue {
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)
-            .open(&self.file_path)
+            .open(&file_path)
             .await
             .map_err(|e| format!("gagal buka file queue: {e}"))?;
 
         file.write_all(line.as_bytes())
             .await
-            .map_err(|e| format!("gagal tulis ke file queue: {e}"))?;
+            .map_err(|e| format!("gagal tulis ke queue: {e}"))?;
 
         Ok(())
     }
 
-    pub async fn read_all(&self) -> Vec<QueueEntry> {
-        let file = match fs::File::open(&self.file_path).await {
+    pub async fn read_all() -> Vec<QueueEntry> {
+        let file = match fs::File::open(Self::file_path()).await {
             Ok(f) => f,
             Err(_) => return vec![],
         };
@@ -78,22 +75,24 @@ impl AtsQueue {
             }
             match serde_json::from_str::<QueueEntry>(&line) {
                 Ok(entry) => entries.push(entry),
-                Err(e) => eprintln!("[ATS Queue] skip baris rusak: {e} | baris: {line}"),
+                Err(e) => eprintln!("[ATS Queue] skip baris rusak: {e}"),
             }
         }
 
         entries
     }
 
-    pub async fn rewrite(&self, remaining: &[QueueEntry]) -> Result<(), String> {
+    pub async fn rewrite(remaining: &[QueueEntry]) -> Result<(), String> {
+        let file_path = Self::file_path();
+
         if remaining.is_empty() {
-            let _ = fs::remove_file(&self.file_path).await;
+            let _ = fs::remove_file(&file_path).await;
             return Ok(());
         }
 
-        let tmp_path = self.file_path.with_extension("jsonl.tmp");
-
+        let tmp_path = file_path.with_extension("jsonl.tmp");
         let mut content = String::new();
+
         for entry in remaining {
             let line = serde_json::to_string(entry)
                 .map_err(|e| format!("gagal serialize entry saat rewrite: {e}"))?;
@@ -101,13 +100,13 @@ impl AtsQueue {
             content.push('\n');
         }
 
-        fs::write(&tmp_path, content)
+        fs::write(&tmp_path, &content)
             .await
-            .map_err(|e| format!("gagal tulis file tmp: {e}"))?;
+            .map_err(|e| format!("gagal tulis tmp: {e}"))?;
 
-        fs::rename(&tmp_path, &self.file_path)
+        fs::rename(&tmp_path, &file_path)
             .await
-            .map_err(|e| format!("gagal rename tmp ke queue: {e}"))?;
+            .map_err(|e| format!("gagal rename tmp: {e}"))?;
 
         Ok(())
     }
@@ -123,13 +122,14 @@ pub fn new_queue_entry(signed_payload: String, label: &str) -> QueueEntry {
     }
 }
 
-pub fn spawn_retry_worker(queue: AtsQueue, ats_endpoint: &'static str) {
+pub fn spawn_retry_worker() {
+    // println!("[ATS] Retry Woker telah ke Spawn");
     tokio::spawn(async move {
         let client = reqwest::Client::new();
         let mut consecutive_failures: u32 = 0;
 
         loop {
-            let entries = queue.read_all().await;
+            let entries = AtsQueue::read_all().await;
 
             if entries.is_empty() {
                 tokio::time::sleep(Duration::from_secs(RETRY_BASE_SECS)).await;
@@ -138,7 +138,7 @@ pub fn spawn_retry_worker(queue: AtsQueue, ats_endpoint: &'static str) {
             }
 
             println!(
-                "[ATS Worker] {} entry pending di queue, mencoba kirim...",
+                "[ATS Worker] {} entry pending, mencoba kirim...",
                 entries.len()
             );
 
@@ -148,16 +148,15 @@ pub fn spawn_retry_worker(queue: AtsQueue, ats_endpoint: &'static str) {
             for mut entry in entries {
                 if entry.attempt_count >= MAX_ATTEMPTS_BEFORE_SKIP {
                     eprintln!(
-                        "[ATS Worker] entry {} sudah {} kali gagal, skip sementara (label: {})",
+                        "[ATS Worker] entry {} sudah {} kali gagal, skip (label: {})",
                         entry.id, entry.attempt_count, entry.label
                     );
                     remaining.push(entry);
                     continue;
                 }
 
-                // signed_payload sudah berisi JSON SignedAuditEvent yang siap kirim
                 let result = client
-                    .post(ats_endpoint)
+                    .post(ATS_ENDPOINT)
                     .header("Content-Type", "application/json")
                     .body(entry.signed_payload.clone())
                     .send()
@@ -166,18 +165,19 @@ pub fn spawn_retry_worker(queue: AtsQueue, ats_endpoint: &'static str) {
                 match result {
                     Ok(res) if res.status().is_success() => {
                         println!(
-                            "[ATS Worker] ✓ entry {} berhasil dikirim (label: {}, attempt: {})",
+                            "[ATS Worker] ✓ entry {} berhasil (label: {}, attempt: {})",
                             entry.id, entry.label, entry.attempt_count + 1
                         );
                         any_success = true;
-                        // Tidak dimasukkan ke remaining → terhapus dari queue
+                        // Tidak dimasukkan ke remaining → terhapus
                     }
                     Ok(res) => {
-                        let status = res.status();
-                        let body = res.text().await.unwrap_or_default();
                         eprintln!(
-                            "[ATS Worker] ✗ entry {} gagal — server {status}: {body} (label: {})",
-                            entry.id, entry.label
+                            "[ATS Worker] ✗ entry {} gagal — server {}: {} (label: {})",
+                            entry.id,
+                            res.status(),
+                            res.text().await.unwrap_or_default(),
+                            entry.label
                         );
                         entry.attempt_count += 1;
                         remaining.push(entry);
@@ -196,7 +196,7 @@ pub fn spawn_retry_worker(queue: AtsQueue, ats_endpoint: &'static str) {
             }
 
             if any_success {
-                if let Err(e) = queue.rewrite(&remaining).await {
+                if let Err(e) = AtsQueue::rewrite(&remaining).await {
                     eprintln!("[ATS Worker] gagal rewrite queue: {e}");
                 }
                 consecutive_failures = 0;
@@ -209,6 +209,7 @@ pub fn spawn_retry_worker(queue: AtsQueue, ats_endpoint: &'static str) {
                 backoff.min(RETRY_MAX_SECS)
             };
 
+            println!("Waiting {wait_secs} seconds before next attempt");
             tokio::time::sleep(Duration::from_secs(wait_secs)).await;
         }
     });

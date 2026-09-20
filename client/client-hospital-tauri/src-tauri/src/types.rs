@@ -101,7 +101,6 @@ pub struct AdministrativeData {
 }
 
 pub struct AppState {
-    pub ats_client: ATSClient,
     pub administrative_data: Option<AdministrativeData>,
     pub auth_state: AuthState,
     pub keys_entry: Entry,

@@ -73,8 +73,8 @@ impl Utils {
         // ── Audit: EV11 - IPFS Object Access ───────────────────────────────────────────────────────
         {
             let event = Event {
-                actor_id: current_user.iota_address.to_string(),
-                actor_type: AuditActorType::from(current_user.role.clone()),
+                actor_id: state.proxy_iota_address.to_string(),
+                actor_type: AuditActorType::PREServer,
                 target_object_type: AuditTargetObjectType::IPFSObject,
                 target_object: res.cid.clone(),
                 outcome: AuditOutcome::Success,
@@ -338,15 +338,16 @@ impl Utils {
         // println!("Audit: IOTA tx data: {:?}", data);
 
         let event = Event {
-            source_component: "proxy-reencryption".to_string(),
-            actor: "actor".to_string(), // Sesuaikan actor jika ada
-            target_object: "iota_transaction".to_string(),
+            actor_id: state.proxy_iota_address.to_string(),
+            actor_type: AuditActorType::PREServer,
+            target_object_type: AuditTargetObjectType::Transaction,
+            target_object: serde_json::to_string(tx_data).unwrap_or_else(|_| "Error serializing data".to_string()),
             outcome: if is_success {
                 AuditOutcome::Success
             } else {
                 AuditOutcome::Failure
             },
-            action_type: "IOTA_TRANSACTION".to_string(),
+            action_type: AuditActionType::Execute,
             details: AuditEventDetails::IotaTransactionSubmission {
                 transaction_digest,
                 payload_hash,
@@ -406,10 +407,10 @@ impl Utils {
         // ── Audit: EV11 - IPFS Object Access ───────────────────────────────────────────────────────
         {
             let event = Event {
-                actor_id: ,
-                actor_type: AuditActorType::from(current_user.role.clone()),
+                actor_id: state.proxy_iota_address.to_string(),
+                actor_type: AuditActorType::PREServer,
                 target_object_type: AuditTargetObjectType::IPFSObject,
-                target_object: res.cid.clone(),
+                target_object: cid.clone(),
                 outcome: AuditOutcome::Success,
                 action_type: AuditActionType::Read,
                 details: AuditEventDetails::IPFSObjectAccess {

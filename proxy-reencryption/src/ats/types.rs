@@ -44,11 +44,11 @@ pub enum AuditActionType {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum AuditActorType {
-    Pasien,
-    PersonnelMedisFasyankes,
-    PersonnelAdministratifFasyankes,
-    AdminFasyankes,
-    Kementerian,
+    AdministrativePersonnel,
+    MedicalPersonnel,
+    Patient,
+    Admin,
+    Ministry,
     PREServer,
 }
 
