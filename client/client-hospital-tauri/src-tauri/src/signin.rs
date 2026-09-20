@@ -99,7 +99,7 @@ pub async fn signin(
                     device_fingerprint: "tauri_desktop_app".to_string(),
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"signin");
+           let _ =  ATSClient::send_event_from_state(&state, event,"signin");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -149,7 +149,7 @@ pub async fn signin(
                 device_fingerprint: "tauri_desktop_app".to_string(),
             },
         };
-        ATSClient::send_event_from_state(&state, event,"signin",);
+       let _ =  ATSClient::send_event_from_state(&state, event,"signin",);
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

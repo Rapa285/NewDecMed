@@ -336,7 +336,7 @@ impl Utils {
             },
         };
 
-        ATSClient::send_event_from_state(&state, event,"iota_transaction");
+       let _ =  ATSClient::send_event_from_state(&state, event,"iota_transaction");
 
         Ok(ex_tx_res)
     }

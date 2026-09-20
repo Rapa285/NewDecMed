@@ -110,7 +110,7 @@ impl Handlers {
                     requester_id: hospital_personnel_iota_address.to_string(),
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
+           let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
         }
         // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -277,7 +277,7 @@ impl Handlers {
                         ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
                     },
                 };
-                ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+               let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
             }
             // ────────────────────────────────────────────────────────────────────────────────────
             let access_keys: AccessKeys =
@@ -310,7 +310,7 @@ impl Handlers {
                         requester_id: requester,
                     },
                 };
-                ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+               let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
             }
 
             // ────────────────────────────────────────────────────────────────────────────────────
@@ -449,7 +449,7 @@ impl Handlers {
                         ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
                     },
                 };
-                ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+               let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
             }
             // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -484,7 +484,7 @@ impl Handlers {
                         requester_id: requester,
                     },
                 };
-                ATSClient::send_event_from_state(&state, event,"get_medical_record");
+               let _ =  ATSClient::send_event_from_state(&state, event,"get_medical_record");
             }
             
             // ────────────────────────────────────────────────────────────────────────────────────
@@ -519,7 +519,7 @@ impl Handlers {
                         requester_id: requester,
                     },
                 };
-                ATSClient::send_event_from_state(&state, event,"get_data_ipfs");
+               let _ =  ATSClient::send_event_from_state(&state, event,"get_data_ipfs");
             }
             // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -670,7 +670,7 @@ impl Handlers {
                         ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
                     },
                 };
-                ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+               let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
             }
             // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -704,7 +704,7 @@ impl Handlers {
                         requester_id: requester,
                     },
                 };
-                ATSClient::send_event_from_state(&state, event,"get_medical_record_update");
+               let _ =  ATSClient::send_event_from_state(&state, event,"get_medical_record_update");
             }
             // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -738,7 +738,7 @@ impl Handlers {
                         requester_id: requester,
                     },
                 };
-                ATSClient::send_event_from_state(&state, event,"get_data_ipfs");
+               let _ =  ATSClient::send_event_from_state(&state, event,"get_data_ipfs");
             }
             // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -843,7 +843,7 @@ impl Handlers {
                     requester_id: requester,
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"get_nonce_handler");
+           let _ =  ATSClient::send_event_from_state(&state, event,"get_nonce_handler");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -874,7 +874,7 @@ impl Handlers {
                     ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+           let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
         }
 
         Ok(Utils::build_success_response(nonce, StatusCode::OK))
@@ -918,7 +918,7 @@ impl Handlers {
                     ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+           let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
         }
         let intent_message = IntentMessage::new(Intent::personal_message(), nonce);
 
@@ -950,7 +950,7 @@ impl Handlers {
                     ttl_remaining: 300, // sesuaikan dengan TTL dalam detik
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
+           let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/get_nonce");
         }
 
         // Get the role of hospital personnel
@@ -1058,7 +1058,7 @@ impl Handlers {
                     ttl_remaining: update_keys_duration.unwrap_or(read_keys_duration) as i64,
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"pre/handlers/store_keys");
+           let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/store_keys");
         }
 
         Ok(Utils::build_success_response(res_data, StatusCode::OK))
@@ -1136,7 +1136,7 @@ impl Handlers {
                     requester_id: requester,
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"update_medical_record");
+           let _ =  ATSClient::send_event_from_state(&state, event,"update_medical_record");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 

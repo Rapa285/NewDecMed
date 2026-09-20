@@ -130,6 +130,7 @@ pub struct AuditEvent {
     pub event: Event
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Event {
     pub actor_id: String,
     pub actor_type: AuditActorType,

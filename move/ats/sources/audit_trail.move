@@ -5,7 +5,7 @@ module ats::audit_log {
     use iota::transfer;
     use iota::tx_context::TxContext;
 
-    public struct LogRecord has store {
+    public struct LogRecord has store, copy, drop {
         json_data: String,
     }
 

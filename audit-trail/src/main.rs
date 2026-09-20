@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_state(app_handlers)
         // GET /api/logs tidak butuh Handlers state, jadi dipasang
         // terpisah dari router ber-state di atas.
-        .route("/api/logs", get(Handlers::get_logs));
+        .route("/api/get-logs-metadata", get(Handlers::get_logs_metadata));
 
     let port = env::var("PORT")?;
 

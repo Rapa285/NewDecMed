@@ -134,7 +134,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            ATSClient::send_event_from_state(&state, event, "create_capability");
+           let _ =  ATSClient::send_event_from_state(&state, event, "create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -220,7 +220,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"create_capability");
+           let _ =  ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
         let ref_gas_price = Utils::get_ref_gas_price(&iota_client)
@@ -552,7 +552,7 @@ impl MoveCall {
                     requester_id: requester,
                 },
             };
-            ATSClient::send_event_from_state(&state, event,"create_capability");
+           let _ =  ATSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
