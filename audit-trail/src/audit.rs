@@ -9,13 +9,15 @@ use crate::utils::Utils;
 
 pub struct AuditLogger {
     rx: Receiver<EncryptedSignedEvent>,
+    record_counter: Arc<AtomicUsize>
     prev_record_hash: Option<String>,
 }
 
 impl AuditLogger {
-    pub fn new(rx: Receiver<EncryptedSignedEvent>) -> Self {
+    pub fn new(rx: Receiver<EncryptedSignedEvent>, record_counter: Arc<AtomicUsize>) -> Self {
         Self {
             rx,
+            record_counter,
             prev_record_hash: None,
         }
     }
@@ -36,7 +38,8 @@ impl AuditLogger {
             if let Err(e) = write_audit_record(&record).await {
                 eprintln!("[audit] gagal tulis record: {e}");
             }
-
+            
+            self.record_counter.fetch_add(1, Ordering::Relaxed);
             self.prev_record_hash = Some(record.record_hash.clone());
         }
     }

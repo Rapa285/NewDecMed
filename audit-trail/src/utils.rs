@@ -82,6 +82,7 @@ impl Utils {
     /// WORKER: Rotasi, Upload IPFS, dan Publish ke IOTA
     pub fn spawn_log_rotation_worker(
         package_id: String,
+        record_counter: Arc<AtomicUsize>
     ) {
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(
@@ -117,6 +118,7 @@ impl Utils {
                     continue;
                 }
                 println!("[rotation] log dirotasi: {temp_file_path}");
+                let record_count = record_counter.swap(0, Ordering::Relaxed);
 
                 let file_hash = match IotaLogClient::hash_file(&temp_file_path).await {
                     Ok(h) => h,
@@ -145,7 +147,7 @@ impl Utils {
                     file_hash,
                     first_record_hash: String::new(),
                     final_record_hash: String::new(),
-                    record_count: 0,
+                    record_count: record_count,
                     prev_tx_digest: prev_tx_digest.clone(),
                 };
 

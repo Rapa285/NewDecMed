@@ -9,7 +9,10 @@ mod iota_utils;
 mod audit;
 mod crypto;
 
-use std::{env, sync::Arc};
+use std::{
+    env, 
+    sync::{Arc, atomic::{AtomicUsize, Ordering}},
+};
 use axum::{
     routing::{get, post},
     Router,
@@ -36,16 +39,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 2. Buat antrean mpsc (kapasitas 10.000 event)
     let (tx, rx) = mpsc::channel::<EncryptedSignedEvent>(10000);
 
+    // Buat counter yang bisa dibagikan ke beberapa thread
+    let record_counter = Arc::new(AtomicUsize::new(0));
+
+    // Clone untuk diberikan ke fungsi Writer
+    let writer_counter = Arc::clone(&record_counter);
+
+    // Clone untuk diberikan ke fungsi Rotasi (loop rotasi)
+    let rotator_counter = Arc::clone(&record_counter);
+
     // 3. Simpan Sender (tx) ke dalam State Handlers
     let app_handlers = Arc::new(Handlers {
         audit_tx: tx,
     });
     
-    let audit_logger = AuditLogger::new(rx);
+    let audit_logger = AuditLogger::new(rx,writer_counter);
     tokio::spawn(audit_logger.run());
 
     // 4. Jalankan worker dari utils.rs
-    Utils::spawn_log_rotation_worker(ATS_PACKAGE_ID.to_string()); // Melakukan rotasi dan upload berkala
+    Utils::spawn_log_rotation_worker(ATS_PACKAGE_ID.to_string(),rotator_counter); // Melakukan rotasi dan upload berkala
 
 
     // 6. Setup Router Axum
