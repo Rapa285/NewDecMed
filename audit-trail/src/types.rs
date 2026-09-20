@@ -122,6 +122,8 @@ pub enum AuditTargetObjectType {
     AccessKeys,
     Transaction,
     IPFSObject,
+    GasReservation,
+    PREEndPoint,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -218,8 +220,6 @@ pub enum AuditEventDetails {
         caller_component: String,
         channel_encryption: String,
         jwt_purpose: Option<String>,
-        http_status_code: u16,
-        latency_ms: u64,
     },
     #[serde(rename = "EV8")]
     IotaTransaction {
@@ -243,7 +243,6 @@ pub enum AuditEventDetails {
     #[serde(rename = "EV10")]
     RedisOperation {
         redis_key_type: String,
-        operation_type: String,
         ttl_remaining: Option<i64>,
         key_pattern: String,
     },
@@ -260,15 +259,15 @@ pub enum AuditEventDetails {
         move_function: String,
         is_mutable: bool,
         transaction_digest: Option<String>,
-        dev_inspect_used: bool,
+        requester_id: String,
+
     },
     #[serde(rename = "EV13")]
     CapabilityValidation {
         capability_id: String,
-        required_scope: String,
-        actual_scope: String,
+        requester_id: String,
         rejection_reason: Option<String>,
-        middleware_layer: String,
+        validation_result: bool,
     },
 }
 

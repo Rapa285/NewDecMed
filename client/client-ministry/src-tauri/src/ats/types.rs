@@ -82,7 +82,7 @@ pub enum AuditTargetObjectType {
     Nonce,
     AccessKeys,
     Transaction,
-    GasRequest,
+    GasReservation,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,7 +127,6 @@ pub enum AuditEventDetails {
     #[serde(rename = "EV10")]
     RedisOperation {
         redis_key_type: String,
-        operation_type: String,
         ttl_remaining: Option<i64>,
         key_pattern: String,
     },
@@ -138,7 +137,6 @@ pub enum AuditEventDetails {
         move_function: String,
         is_mutable: bool,
         transaction_digest: Option<String>,
-        dev_inspect_used: bool,
     },
     #[serde(rename = "EV13")]
     CapabilityValidation {

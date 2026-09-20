@@ -22,7 +22,10 @@ use crate::{
     },
     utils::Utils,
     types::AppState,
-    ats::{ATSClient, AuditEvent, AuditEventDetails, AuditOutcome},
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
 };
 
 pub struct MoveCall {
@@ -115,28 +118,9 @@ impl MoveCall {
 
 
         let (sponsor_account, reservation_id, gas_coins) =
-            Utils::reserve_gas(NANOS_PER_IOTA * 2, 60)
+            Utils::reserve_gas(state, NANOS_PER_IOTA * 2, 60)
                 .await
                 .context(current_fn!())?;
-
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
-
-            let event = Event {
-                source_component: "proxy-reencryption".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event, "create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = Utils::get_ref_gas_price(&iota_client)
             .await
@@ -202,27 +186,10 @@ impl MoveCall {
         .context(current_fn!())?;
 
         let (sponsor_account, reservation_id, gas_coins) =
-            Utils::reserve_gas(NANOS_PER_IOTA * 2, 10)
+            Utils::reserve_gas(state, NANOS_PER_IOTA * 2, 10)
                 .await
                 .context(current_fn!())?;
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "proxy-reencryption".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
         let ref_gas_price = Utils::get_ref_gas_price(&iota_client)
             .await
             .context(current_fn!())?;
@@ -533,28 +500,10 @@ impl MoveCall {
         .context(current_fn!())?;
 
         let (sponsor_account, reservation_id, gas_coins) =
-            Utils::reserve_gas(NANOS_PER_IOTA * 2, 10)
+            Utils::reserve_gas(state, NANOS_PER_IOTA * 2, 10)
                 .await
                 .context(current_fn!())?;
 
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
-
-            let event = Event {
-                source_component: "proxy-reencryption".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = Utils::get_ref_gas_price(&iota_client)
             .await

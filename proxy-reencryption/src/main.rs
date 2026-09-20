@@ -123,11 +123,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let api_routes = Router::new()
         .nest("/gen", gen_routes)
         .merge(protected_routes)
-        .merge(public_routes)
-        .layer(ServiceBuilder::new().layer(middleware::from_fn_with_state(
-            shared_state.clone(),
-            middlewares::audit_logger_middleware,
-        )));
+        .merge(public_routes);
+        // .layer(ServiceBuilder::new().layer(middleware::from_fn_with_state(
+        //     shared_state.clone(),
+        //     middlewares::audit_logger_middleware,
+        // )));
 
     let api_v1_routes = Router::new().nest("/api/v1", api_routes);
 

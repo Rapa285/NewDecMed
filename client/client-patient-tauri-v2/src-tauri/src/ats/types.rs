@@ -137,6 +137,5 @@ pub enum AuditEventDetails {
         move_function: String,
         is_mutable: bool,
         transaction_digest: Option<String>,
-        dev_inspect_used: bool,
     },
 }
