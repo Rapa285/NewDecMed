@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-
+use crate::types::AuthRole;
 // ── Encrypted transport wrapper ───────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +52,16 @@ pub enum AuditActorType {
     PREServer,
 }
 
+impl From<AuthRole> for AuditActorType {
+    fn from(role: AuthRole) -> Self {
+        match role {
+            AuthRole::AdministrativePersonnel => AuditActorType::AdministrativePersonnel,
+            AuthRole::MedicalPersonnel => AuditActorType::MedicalPersonnel,
+            AuthRole::Patient => AuditActorType::Patient,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum AuditTargetObjectType {
     ActivationKey,
@@ -63,6 +73,7 @@ pub enum AuditTargetObjectType {
     Nonce,
     AccessKeys,
     Transaction,
+    IPFSObject,
 }
 
 // ── AuditEvent ────────────────────────────────────────────────────────────────
@@ -74,6 +85,7 @@ pub struct AuditEvent {
     pub event: Event
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Event {
     pub actor_id: String,
     pub actor_type: AuditActorType,
@@ -138,10 +150,8 @@ pub enum AuditEventDetails {
     /// EV11 - IPFS Object Access
     #[serde(rename = "EV11")]
     IpfsOperation {
-        cid: String,
-        operation_type: String,
+        data: Option<String>,
         data_size: Option<u64>,
-        patient_iota_address: Option<String>,
         ipfs_node_url: String,
     },
 
@@ -181,7 +191,7 @@ impl AuditEventDetails {
     }
 }
 
-impl AuditEvent {
+impl Event {
     pub fn event_type(&self) -> &'static str {
         self.details.event_type()
     }

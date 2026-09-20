@@ -161,7 +161,7 @@ pub async fn execute_tx(
 
     let event = Event {
         actor_id: signer_identity,
-        actor_type: AuditActorType::Kementerian,
+        actor_type: AuditActorType::Ministry,
         target_object_type: AuditTargetObjectType::Transaction,
         target_object: serde_json::to_string(tx_data).unwrap_or_else(|_| "Error serializing data".to_string()),
         outcome: is_success,

@@ -102,11 +102,11 @@ pub enum AuditActionType {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum AuditActorType {
-    Pasien,
-    PersonnelMedisFasyankes,
-    PersonnelAdministratifFasyankes,
-    AdminFasyankes,
-    Kementerian,
+    AdministrativePersonnel,
+    MedicalPersonnel,
+    Patient,
+    Admin,
+    Ministry,
     PREServer,
 }
 
@@ -120,7 +120,8 @@ pub enum AuditTargetObjectType {
     AdministrativeData,
     Nonce,
     AccessKeys,
-    Transaction
+    Transaction,
+    IPFSObject,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -248,10 +249,8 @@ pub enum AuditEventDetails {
     },
     #[serde(rename = "EV11")]
     IpfsOperation {
-        cid: String,
-        operation_type: String,
+        data: Option<String>,
         data_size: Option<u64>,
-        patient_iota_address: Option<String>,
         ipfs_node_url: String,
     },
     #[serde(rename = "EV12")]

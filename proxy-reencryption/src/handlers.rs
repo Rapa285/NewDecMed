@@ -90,29 +90,10 @@ impl Handlers {
             )
         };
 
-        let cid = Utils::add_and_pin_to_ipfs(medical_metadata.enc_data)
+        let cid = Utils::add_and_pin_to_ipfs(&state, medical_metadata.enc_data)
             .await
             .context(current_fn!())?;
         let created_at = Utils::sys_time_to_iso(std::time::SystemTime::now());
-
-        // ── Audit: EV11 - IPFS Object Access ───────────────────────────────────────────────────────
-        {
-            let cid_clone = cid.clone();
-            let event = Event {
-                source_component: "proxy-reencryption".to_string(),
-                actor: hospital_personnel_iota_address.to_string(),
-                target_object: cid_clone.clone(),
-                outcome: AuditOutcome::Success,
-                action_type: "IPFS_UPLOAD".to_string(),
-                details: AuditEventDetails::IPFSObjectAccess {
-                    cid: cid_clone,
-                    operation_type: "Upload".to_string(),
-                    requester_id: hospital_personnel_iota_address.to_string(),
-                },
-            };
-           let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
-        }
-        // ────────────────────────────────────────────────────────────────────────────────────
 
 
         let medical_metadata = MedicalMetadata {
@@ -499,30 +480,10 @@ impl Handlers {
                 Utils::serde_deserialize_from_base64(administrative_metadata.private_metadata)
                     .context(current_fn!())?;
 
-            let enc_medical_data = Utils::get_data_ipfs(medical_metadata.cid)
+            let enc_medical_data = Utils::get_data_ipfs(&state, medical_metadata.cid)
                 .await
                 .context(current_fn!())?;
             
-            // ── Audit: EV11 - IPFS Object Access ──────────────────────────────────────────────
-            {
-                let requester = current_user.iota_address.clone();
-
-                let event = Event {
-                    source_component: "proxy-reencryption".to_string(),
-                    actor: requester.clone(),
-                    target_object: cid_clone.clone(),
-                    outcome: AuditOutcome::Success,
-                    action_type: "IPFS_READ".to_string(),
-                    details: AuditEventDetails::IPFSObjectAccess {
-                        cid: cid_clone,
-                        operation_type: "Read".to_string(),
-                        requester_id: requester,
-                    },
-                };
-               let _ =  ATSClient::send_event_from_state(&state, event,"get_data_ipfs");
-            }
-            // ──────────────────────────────────────────────────────────────────────────────────
-
             let k_frag: KeyFrag = Utils::serde_deserialize_from_base64(access_keys.k_frag.clone())
                 .context(current_fn!())?;
             let signer_pre_public_key: PublicKey =
@@ -718,29 +679,9 @@ impl Handlers {
                 Utils::serde_deserialize_from_base64(administrative_metadata.private_metadata)
                     .context(current_fn!())?;
 
-            let enc_medical_data = Utils::get_data_ipfs(medical_metadata.cid)
+            let enc_medical_data = Utils::get_data_ipfs(&state, medical_metadata.cid)
                 .await
                 .context(current_fn!())?;
-            
-            // ── Audit: EV11 - IPFS Object Access ──────────────────────────────────────────────
-            {
-                let requester = current_user.iota_address.clone();
-
-                let event = Event {
-                    source_component: "proxy-reencryption".to_string(),
-                    actor: requester.clone(),
-                    target_object: cid_clone.clone(),
-                    outcome: AuditOutcome::Success,
-                    action_type: "IPFS_READ".to_string(),
-                    details: AuditEventDetails::IPFSObjectAccess {
-                        cid: cid_clone,
-                        operation_type: "Read".to_string(),
-                        requester_id: requester,
-                    },
-                };
-               let _ =  ATSClient::send_event_from_state(&state, event,"get_data_ipfs");
-            }
-            // ──────────────────────────────────────────────────────────────────────────────────
 
             let k_frag: KeyFrag = Utils::serde_deserialize_from_base64(access_keys.k_frag.clone())
                 .context(current_fn!())?;
@@ -1114,7 +1055,7 @@ impl Handlers {
             )
         };
 
-        let cid = Utils::add_and_pin_to_ipfs(medical_metadata.enc_data)
+        let cid = Utils::add_and_pin_to_ipfs(&state, medical_metadata.enc_data)
             .await
             .context(current_fn!())?;
         let created_at = Utils::sys_time_to_iso(std::time::SystemTime::now());

@@ -63,11 +63,11 @@ pub enum AuditActionType {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum AuditActorType {
-    Pasien,
-    PersonnelMedisFasyankes,
-    PersonnelAdministratifFasyankes,
-    AdminFasyankes,
-    Kementerian,
+    AdministrativePersonnel,
+    MedicalPersonnel,
+    Patient,
+    Admin,
+    Ministry,
     PREServer,
 }
 
@@ -131,14 +131,6 @@ pub enum AuditEventDetails {
         ttl_remaining: Option<i64>,
         key_pattern: String,
     },
-    #[serde(rename = "EV11")]
-    IpfsOperation {
-        cid: String,
-        operation_type: String,
-        data_size: Option<u64>,
-        patient_iota_address: Option<String>,
-        ipfs_node_url: String,
-    },
     #[serde(rename = "EV12")]
     IotaMetadataOperation {
         object_id: String,
@@ -166,7 +158,6 @@ impl AuditEventDetails {
             AuditEventDetails::IotaTransaction { .. } => "EV8",
             AuditEventDetails::GasSponsorship { .. } => "EV9",
             AuditEventDetails::RedisOperation { .. } => "EV10",
-            AuditEventDetails::IpfsOperation { .. } => "EV11",
             AuditEventDetails::IotaMetadataOperation { .. } => "EV12",
             AuditEventDetails::CapabilityValidation { .. } => "EV13",
         }

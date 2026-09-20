@@ -10,7 +10,7 @@ use super::constants::{ATS_ENDPOINT, ATS_QUEUE_DIR};
 
 const QUEUE_FILE: &str = "ats_queue.jsonl";
 const RETRY_BASE_SECS: u64 = 5;
-const RETRY_MAX_SECS: u64 = 300;
+const RETRY_MAX_SECS: u64 = 60;
 const MAX_ATTEMPTS_BEFORE_SKIP: u32 = 10;
 
 /// Entry yang disimpan di queue.
@@ -209,6 +209,7 @@ pub fn spawn_retry_worker() {
                 backoff.min(RETRY_MAX_SECS)
             };
 
+            println!("Waiting {wait_secs} seconds before next attempt");
             tokio::time::sleep(Duration::from_secs(wait_secs)).await;
         }
     });

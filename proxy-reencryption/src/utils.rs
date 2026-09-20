@@ -54,7 +54,7 @@ use crate::{
 pub struct Utils {}
 
 impl Utils {
-    pub async fn add_and_pin_to_ipfs(data: String) -> Result<String, ProxyError> {
+    pub async fn add_and_pin_to_ipfs(state: &AppState, data: String) -> Result<String, ProxyError> {
         let path_part = reqwest::multipart::Part::text(data);
         let form = reqwest::multipart::Form::new().part("path", path_part);
         let req_client = reqwest::Client::new();
@@ -69,6 +69,25 @@ impl Utils {
             .json::<UtilIpfsAddResponse>()
             .await
             .context(current_fn!())?;
+
+        // ── Audit: EV11 - IPFS Object Access ───────────────────────────────────────────────────────
+        {
+            let event = Event {
+                actor_id: current_user.iota_address.to_string(),
+                actor_type: AuditActorType::from(current_user.role.clone()),
+                target_object_type: AuditTargetObjectType::IPFSObject,
+                target_object: res.cid.clone(),
+                outcome: AuditOutcome::Success,
+                action_type: AuditActionType::Create,
+                details: AuditEventDetails::IPFSOperation {
+                    data: data,
+                    data_size: res.size,
+                    ipfs_node_url: IPFS_BASE_URL
+                },
+            };
+           let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
+        }
+        // ────────────────────────────────────────────────────────────────────────────────────
 
         Ok(res.cid)
     }
@@ -374,7 +393,7 @@ impl Utils {
         Ok(Mnemonic::generate(size).context(current_fn!())?)
     }
 
-    pub async fn get_data_ipfs(cid: String) -> Result<String, ProxyError> {
+    pub async fn get_data_ipfs(state:&AppState, cid: String) -> Result<String, ProxyError> {
         let req_client = reqwest::Client::new();
         let content = Utils::do_http_get_request::<String, String, _>(
             &req_client,
@@ -383,6 +402,25 @@ impl Utils {
         )
         .await
         .context(current_fn!())?;
+
+        // ── Audit: EV11 - IPFS Object Access ───────────────────────────────────────────────────────
+        {
+            let event = Event {
+                actor_id: ,
+                actor_type: AuditActorType::from(current_user.role.clone()),
+                target_object_type: AuditTargetObjectType::IPFSObject,
+                target_object: res.cid.clone(),
+                outcome: AuditOutcome::Success,
+                action_type: AuditActionType::Read,
+                details: AuditEventDetails::IPFSObjectAccess {
+                    data: None,
+                    data_size: None,
+                    ipfs_node_url: IPFS_GATEWAY_BASE_URL
+                },
+            };
+           let _ =  ATSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
+        }
+        // ────────────────────────────────────────────────────────────────────────────────────
 
         Ok(content)
     }

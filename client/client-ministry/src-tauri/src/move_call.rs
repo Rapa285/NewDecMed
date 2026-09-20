@@ -227,7 +227,7 @@ impl MoveCall {
 
             let event = Event {
                 actor_id: requester,
-                actor_type: AuditActorType::Kementerian,
+                actor_type: AuditActorType::Ministry,
                 target_object_type: AuditTargetObjectType::GasRequest,
                 target_object: "GasRequest".to_string(),
                 outcome: AuditOutcome::Success,
