@@ -7,7 +7,10 @@ use iota_types::{
 };
 
 use crate::{
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome, ATSClient},
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, AuditSourceComponent, 
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
     client_error::ClientError,
     constants::GAS_BUDGET,
     current_fn,
@@ -19,6 +22,8 @@ use crate::{
         parse_move_read_only_result, reserve_gas,
     },
 };
+use chrono::Utc;
+
 
 pub struct MoveCall {
     pub decmed_package: DecmedPackage,
@@ -94,7 +99,7 @@ impl MoveCall {
         // {
         //     let requester = sender.to_string();
 
-        //     let event = AuditEvent {
+        //     let event = Event {
         //         source_component: "ministry-client".to_string(),
         //         actor: requester.clone(),
         //         target_object: "IOTA Gas Station".to_string(),
@@ -217,24 +222,32 @@ impl MoveCall {
             .await
             .context(current_fn!())?;
 
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        // {
-        //     let requester = sender.to_string();
+        ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        {
+            let requester = sender.to_string();
 
-        //     let event = AuditEvent {
-        //         source_component: "ministry-client".to_string(),
-        //         actor: requester.clone(),
-        //         target_object: "IOTA Gas Station".to_string(),
-        //         outcome: AuditOutcome::Success,
-        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-        //         details: AuditEventDetails::GasSponsorshipRequest {
-        //             requested_gas_budget: NANOS_PER_IOTA,
-        //             requester_id: requester,
-        //         },
-        //     };
-        //     ATSClient::send_event_from_state(&state, event,"create_capability");
-        // }
-        // ──────────────────────────────────────────────────────────────────────────────────
+            let event = Event {
+                source_component: AuditSourceComponent::MinistryClient,
+                source_timestamp: Utc::now(),
+                actor_id: requester,
+                actor_type: AuditActorType::Kementerian,
+                target_object_type: AuditTargetObjectType::Transaction,
+                target_object: tx_data,
+                outcome: is_success,
+                action_type: AuditActionType::Execute,
+                details: AuditEventDetails::GasSponsorshipRequest {
+                    requester_id: requester,
+                    gas_budget_requested: NANOS_PER_IOTA,
+                    reserve_duration_secs: u64,
+                    reservation_id: Option<u64>,
+                    sponsor_address: Option<String>,
+                    transaction_digest: Option<String>,
+                    gas_coin_object_ids: Vec<String>,
+                },
+            };
+            ATSClient::send_event_from_state(&state, event,"create_capability");
+        }
+        ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await

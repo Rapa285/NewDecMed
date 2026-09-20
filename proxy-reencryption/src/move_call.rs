@@ -123,7 +123,7 @@ impl MoveCall {
         {
             let requester = sender.to_string();
 
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: requester.clone(),
                 target_object: "IOTA Gas Station".to_string(),
@@ -209,7 +209,7 @@ impl MoveCall {
         {
             let requester = sender.to_string();
 
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: requester.clone(),
                 target_object: "IOTA Gas Station".to_string(),
@@ -541,7 +541,7 @@ impl MoveCall {
         {
             let requester = sender.to_string();
 
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: requester.clone(),
                 target_object: "IOTA Gas Station".to_string(),

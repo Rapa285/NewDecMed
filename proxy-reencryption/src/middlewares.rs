@@ -35,7 +35,7 @@ pub async fn auth_middleware(
 
     // Helper closure untuk mengirim event agar kode tidak berulang
     let send_audit = |req_id: &str, cap_id: &str, res: bool, rej: Option<String>, out: AuditOutcome| {
-        let event = AuditEvent {
+        let event = Event {
             source_component: "proxy-reencryption".to_string(),
             actor: req_id.to_string(),
             target_object: cap_id.to_string(),

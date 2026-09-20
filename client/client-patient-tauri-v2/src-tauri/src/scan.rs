@@ -248,7 +248,7 @@ pub async fn create_access(
             "Read".to_string()
         };
 
-        let event = AuditEvent {
+        let event = Event {
             source_component: "patient-client".to_string(),
             actor: patient_iota_address.to_string(),
             target_object: hospital_personnel_iota_address.to_string(),
@@ -305,7 +305,7 @@ pub async fn process_qr(
 
     // ── Audit: EV2 - QR Delegation ─────────────────────────────────────────────────────
     {
-        let event = AuditEvent {
+        let event = Event {
             source_component: "patient-client".to_string(),
             actor: patient_iota_address.to_string(),
             target_object: hospital_personnel_iota_address.clone().to_string(),

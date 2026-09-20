@@ -85,7 +85,7 @@ pub async fn create_activation_key(
 
     // ── Audit: EV6 - Healthcare Facility Registration ─────────────────────────────────
     {
-        let event = AuditEvent {
+        let event = Event {
             source_component: AuditSourceComponent::MinistryClient,
             source_timestamp: Utc::now(),
             actor_id: admin_iota_address.to_string(),
@@ -183,7 +183,7 @@ pub async fn update_activation_key(
 
     // ── Audit: EV6 - Healthcare Facility Registration ─────────────────────────────────
     {
-        let event = AuditEvent {
+        let event = Event {
             source_component: AuditSourceComponent::MinistryClient,
             source_timestamp: Utc::now(),
             actor_id: admin_iota_address.to_string(),

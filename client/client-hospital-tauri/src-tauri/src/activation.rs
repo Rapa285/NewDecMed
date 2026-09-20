@@ -204,7 +204,7 @@ pub async fn hospital_admin_add_activation_key(
 
     // ── Audit: EV5 - Hospital Personnel Key Generation ─────────────────────────────────
     {
-        let event = AuditEvent {
+        let event = Event {
             source_component: "hospital-client".to_string(),
             actor: hospital_admin_iota_address.to_string(),
             target_object: hospital_personnel_id.clone(),
@@ -321,7 +321,7 @@ pub async fn update_personnel_activation_key(
         let (_, hospital_part) = decode_hospital_personnel_id(personnel_id.clone())
             .unwrap_or((String::new(), String::new()));
 
-        let event = AuditEvent {
+        let event = Event {
             source_component: "hospital-client".to_string(),
             actor: hospital_admin_iota_address.to_string(),
             target_object: personnel_id.clone(),

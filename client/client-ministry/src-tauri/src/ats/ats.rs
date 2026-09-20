@@ -6,12 +6,13 @@ use anyhow::{anyhow, Context};
 use super::constants::{ATS_ENDPOINT, ATS_SERVER_PUBLIC_KEY};
 use super::crypto::{aes_encrypt, ecies_encrypt_key};
 use super::queue::{new_queue_entry, spawn_retry_worker, AtsQueue};
-use super::types::{AuditEvent, EncryptedSignedEvent};
+use super::types::{AuditEvent, EncryptedSignedEvent,AuditSourceComponent};
 use crate::{
     types::AppState,
     current_fn,
     utils::{parse_keys_entry, get_global_admin_iota_address_from_keys_entry, get_global_admin_iota_key_pair_from_keys_entry},
 };
+use chrono::Utc;
 
 pub struct ATSClient;
 
@@ -28,9 +29,15 @@ impl ATSClient {
     /// Mengambil keypair dari AppState secara langsung.
     pub fn send_event_from_state(
         state: &AppState,
-        event: AuditEvent,
+        event: Event,
         label: &'static str,
     ) -> anyhow::Result<()> {
+
+        let audit_event = AuditEvent{
+            source_component : AuditSourceComponent::MinistryClient,
+            source_timestamp : Utc::now(),
+            event : event,
+        }
 
         let keys_entry = parse_keys_entry(&state.keys_entry.get_secret().context(current_fn!())?)
         .context(current_fn!())?;
@@ -46,7 +53,7 @@ impl ATSClient {
 
         tokio::spawn(async move {
 
-            Self::build_and_send(event, iota_address.to_string(), &iota_key_pair, label).await;
+            Self::build_and_send(audit_event, iota_address.to_string(), &iota_key_pair, label).await;
         });
 
         Ok(())

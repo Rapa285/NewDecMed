@@ -86,7 +86,7 @@ pub async fn signin(
         // ── Audit: EV1 - Authentication (Failure: Account Not Found) ─────────────────────
         {
             let actor = hospital_personnel_iota_address.to_string();
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "hospital-client".to_string(),
                 actor: actor.clone(),
                 target_object: actor.clone(),
@@ -136,7 +136,7 @@ pub async fn signin(
     // ── Audit: EV1 - Authentication (Success) ─────────────────────────────────────────
     {
         let actor = hospital_personnel_iota_address.to_string();
-        let event = AuditEvent {
+        let event = Event {
             source_component: "hospital-client".to_string(),
             actor: actor.clone(),
             target_object: actor.clone(),

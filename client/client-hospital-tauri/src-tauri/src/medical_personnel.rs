@@ -99,7 +99,7 @@ pub async fn new_medical_record(
     {
         let state_guard = _state.lock().await;
 
-        let event = AuditEvent {
+        let event = Event {
             source_component: "hospital-client".to_string(),
             actor: patient_iota_address.to_string(),
             target_object: patient_iota_address.to_string(),
@@ -276,7 +276,7 @@ pub async fn get_medical_record(
 
     // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
     {
-        let event = AuditEvent {
+        let event = Event {
             source_component: "hospital-client".to_string(),
             actor: patient_iota_address.clone(),
             target_object: patient_iota_address.clone(),
@@ -448,7 +448,7 @@ pub async fn get_medical_record_update(
 
     // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
     {
-        let event = AuditEvent {
+        let event = Event {
             source_component: "hospital-client".to_string(),
             actor: patient_iota_address.clone(),
             target_object: patient_iota_address.clone(),
@@ -721,7 +721,7 @@ pub async fn update_medical_record(
     {
         let state_guard = _state.lock().await;
 
-        let event = AuditEvent {
+        let event = Event {
             source_component: "hospital-client".to_string(),
             actor: patient_iota_address.to_string(),
             target_object: patient_iota_address.to_string(),

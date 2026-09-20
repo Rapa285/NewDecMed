@@ -98,7 +98,7 @@ impl Handlers {
         // ── Audit: EV11 - IPFS Object Access ───────────────────────────────────────────────────────
         {
             let cid_clone = cid.clone();
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: hospital_personnel_iota_address.to_string(),
                 target_object: cid_clone.clone(),
@@ -265,7 +265,7 @@ impl Handlers {
 
             // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
             {
-                let event = AuditEvent {
+                let event = Event {
                     source_component: "proxy-reencryption".to_string(),
                     actor: current_user.iota_address.to_string(),
                     target_object: "access_keys".to_string(),
@@ -299,7 +299,7 @@ impl Handlers {
                 let object_id = query.patient_iota_address.clone();
                 let requester = current_user.iota_address.clone();
 
-                let event = AuditEvent {
+                let event = Event {
                     source_component: "proxy-reencryption".to_string(),
                     actor: requester.clone(),
                     target_object: object_id.clone(),
@@ -437,7 +437,7 @@ impl Handlers {
             
             // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
             {
-                let event = AuditEvent {
+                let event = Event {
                     source_component: "proxy-reencryption".to_string(),
                     actor: patient_iota_address.to_string(),
                     target_object: "nonce".to_string(),
@@ -473,7 +473,7 @@ impl Handlers {
                 let object_id = query.patient_iota_address.clone();
                 let requester = current_user.iota_address.clone();
 
-                let event = AuditEvent {
+                let event = Event {
                     source_component: "proxy-reencryption".to_string(),
                     actor: requester.clone(),
                     target_object: object_id.clone(),
@@ -507,7 +507,7 @@ impl Handlers {
             {
                 let requester = current_user.iota_address.clone();
 
-                let event = AuditEvent {
+                let event = Event {
                     source_component: "proxy-reencryption".to_string(),
                     actor: requester.clone(),
                     target_object: cid_clone.clone(),
@@ -658,7 +658,7 @@ impl Handlers {
             
             // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
             {
-                let event = AuditEvent {
+                let event = Event {
                     source_component: "proxy-reencryption".to_string(),
                     actor: patient_iota_address.to_string(),
                     target_object: "nonce".to_string(),
@@ -693,7 +693,7 @@ impl Handlers {
                 let object_id = query.patient_iota_address.clone();
                 let requester = current_user.iota_address.clone();
 
-                let event = AuditEvent {
+                let event = Event {
                     source_component: "proxy-reencryption".to_string(),
                     actor: requester.clone(),
                     target_object: object_id.clone(),
@@ -726,7 +726,7 @@ impl Handlers {
             {
                 let requester = current_user.iota_address.clone();
 
-                let event = AuditEvent {
+                let event = Event {
                     source_component: "proxy-reencryption".to_string(),
                     actor: requester.clone(),
                     target_object: cid_clone.clone(),
@@ -832,7 +832,7 @@ impl Handlers {
             let object_id = payload.iota_address.clone();
             let requester = payload.iota_address.clone();
 
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: requester.clone(),
                 target_object: object_id.clone(),
@@ -862,7 +862,7 @@ impl Handlers {
         
         // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
         {
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: patient_iota_address.to_string(),
                 target_object: "nonce".to_string(),
@@ -906,7 +906,7 @@ impl Handlers {
 
         // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
         {
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: patient_iota_address.to_string(),
                 target_object: "nonce".to_string(),
@@ -938,7 +938,7 @@ impl Handlers {
         
         // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────
         {
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: patient_iota_address.to_string(),
                 target_object: "nonce".to_string(),
@@ -1043,7 +1043,7 @@ impl Handlers {
 
         // ── Audit: EV10 - Redis Operation ─────────────────────────────────────────────
         {
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: patient_iota_address.to_string(),
                 target_object: format!(
@@ -1124,7 +1124,7 @@ impl Handlers {
             let cid_clone = cid.clone();
             let requester = current_user.iota_address.clone();
 
-            let event = AuditEvent {
+            let event = Event {
                 source_component: "proxy-reencryption".to_string(),
                 actor: requester.clone(),
                 target_object: cid_clone.clone(),

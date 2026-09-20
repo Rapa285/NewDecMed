@@ -318,7 +318,7 @@ impl Utils {
 
         // println!("Audit: IOTA tx data: {:?}", data);
 
-        let event = AuditEvent {
+        let event = Event {
             source_component: "proxy-reencryption".to_string(),
             actor: "actor".to_string(), // Sesuaikan actor jika ada
             target_object: "iota_transaction".to_string(),

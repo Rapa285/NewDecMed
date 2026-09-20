@@ -62,6 +62,7 @@ pub enum AuditTargetObjectType {
     AdministrativeData,
     Nonce,
     AccessKeys,
+    Transaction,
 }
 
 // ── AuditEvent ────────────────────────────────────────────────────────────────
@@ -70,6 +71,10 @@ pub enum AuditTargetObjectType {
 pub struct AuditEvent {
     pub source_component: AuditSourceComponent,
     pub source_timestamp: DateTime<Utc>,
+    pub event: Event
+}
+
+pub struct Event {
     pub actor_id: String,
     pub actor_type: AuditActorType,
     pub target_object_type: AuditTargetObjectType,

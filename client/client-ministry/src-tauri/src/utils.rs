@@ -34,7 +34,10 @@ use crate::{
     constants::{GAS_STATION_BASE_URL, HASH_SALT, IOTA_URL},
     current_fn,
     types::{ExecuteTxResponse, KeysEntry, ReserveGasResponse, AppState},
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome, ATSClient},
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, AuditSourceComponent, 
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
 };
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -83,8 +86,10 @@ pub async fn execute_tx(
 
     let signer_identity = tx.data().intent_message().value.sender().to_string();
     let payload_hash = tx.digest().to_string();
-    let data = tx.data().clone();
-    
+    let tx_data = &tx.data().intent_message().value;
+    let sponsor_address = tx_data.gas_data().owner.to_string();
+
+    // println!("tx data : {data:?}");
     let (tx_base_64, signature_base_64) = tx.to_tx_bytes_and_signatures();
 
     let req_client = reqwest::Client::new();
@@ -106,51 +111,73 @@ pub async fn execute_tx(
         .json::<ExecuteTxResponse>()
         .await
         .context(current_fn!())?;
+    
+    // println!("ex tx res : {ex_tx_res:?}");
 
     let mut transaction_digest = String::from("unknown");
     let mut network_confirmation_status = String::from("unknown");
-    let mut is_success = false;
+    let mut gas_used: Option<u64> = None;
+    let mut is_success = AuditOutcome::Failure;
 
     if let Some(ref effects_enum) = ex_tx_res.effects {
         let IotaTransactionBlockEffects::V1(ref effects) = effects_enum;
 
+        // Ambil Digest dari efek yang benar-benar terjadi
         transaction_digest = effects.transaction_digest.to_string();
 
-        match &effects.status {
-            iota_json_rpc_types::IotaExecutionStatus::Success => {
-                network_confirmation_status = "confirmed".to_string();
-                is_success = true;
-            }
-            iota_json_rpc_types::IotaExecutionStatus::Failure { error } => {
-                network_confirmation_status = format!("failed: {}", error);
-            }
-        };
-    } else if let Some(ref err) = ex_tx_res.error {
-        network_confirmation_status = format!("rpc_error: {}", err);
-        println!("Transaksi gagal di tingkat RPC: {}", err);
+        // Cek status kesuksesan transaksi
+        if effects.status.is_ok() {
+            network_confirmation_status = String::from("success");
+            is_success = AuditOutcome::Success;
+        } else {
+            network_confirmation_status = String::from("failure");
+            // Bisa juga ambil pesan error-nya jika ada
+            // network_confirmation_status = format!("failure: {:?}", effects.status);
+        }
+
+        // Hitung total gas used (computation + storage - rebate)
+        let gas = &effects.gas_used;
+        let total_gas = (gas.computation_cost + gas.storage_cost).saturating_sub(gas.storage_rebate);
+        gas_used = Some(total_gas);
     }
 
-    // println!("Audit: IOTA tx data: {:?}", data);
+    let mut move_module = String::from("unknown");
+    let mut move_function = String::from("unknown");
 
-    // let event = AuditEvent {
-    //     source_component: "ministry-client".to_string(),
-    //     actor: "actor".to_string(), // Sesuaikan actor jika ada
-    //     target_object: "iota_transaction".to_string(),
-    //     outcome: if is_success {
-    //         AuditOutcome::Success
-    //     } else {
-    //         AuditOutcome::Failure
-    //     },
-    //     action_type: "IOTA_TRANSACTION".to_string(),
-    //     details: AuditEventDetails::IotaTransactionSubmission {
-    //         transaction_digest,
-    //         payload_hash,
-    //         network_confirmation_status,
-    //         signer_identity,
-    //     },
-    // };
+    // Lakukan pattern matching untuk mengekstrak Programmable Transaction
+    if let iota_types::transaction::TransactionKind::ProgrammableTransaction(pt) = tx_data.kind() {
+        // Karena dalam 1 transaksi bisa ada banyak perintah (commands),
+        // kita loop untuk mencari perintah MoveCall.
+        for command in &pt.commands {
+            if let iota_types::transaction::Command::MoveCall(move_call) = command {
+                move_module = move_call.module.to_string();
+                move_function = move_call.function.to_string();
+                
+                // Jika kamu hanya butuh MoveCall pertama, kita bisa break di sini
+                break; 
+            }
+        }
+    }
 
-    // ATSClient::send_event_from_state(&state, event,"iota_transaction");
+    let event = Event {
+        actor_id: signer_identity,
+        actor_type: AuditActorType::Kementerian,
+        target_object_type: AuditTargetObjectType::Transaction,
+        target_object: tx_data,
+        outcome: is_success,
+        action_type: AuditActionType::Execute,
+        details: AuditEventDetails::IotaTransaction {
+            transaction_digest: transaction_digest,
+            payload_hash: payload_hash,
+            move_function: move_function,
+            move_module: move_module,
+            network_confirmation_status: network_confirmation_status,
+            gas_used: gas_used,
+            sponsor_address: sponsor_address,
+        },
+    };
+
+    ATSClient::send_event_from_state(&state, event,"iota_transaction");
 
     Ok(ex_tx_res)
 }
