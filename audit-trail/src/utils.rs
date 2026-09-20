@@ -25,6 +25,7 @@ use std::str::FromStr;
 use shared_crypto::intent::{Intent, IntentMessage};
 use iota_types::base_types::{IotaAddress};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
+use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 
 
 pub struct Utils {}
@@ -147,7 +148,7 @@ impl Utils {
                     file_hash,
                     first_record_hash: String::new(),
                     final_record_hash: String::new(),
-                    record_count: record_count,
+                    record_count: record_count as u64,
                     prev_tx_digest: prev_tx_digest.clone(),
                 };
 

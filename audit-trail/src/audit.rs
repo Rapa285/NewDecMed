@@ -6,10 +6,11 @@ use uuid::Uuid;
 use crate::types::{AuditEvent, AuditRecord, EncryptedSignedEvent};
 use crate::constants::LOG_FILE_PATH;
 use crate::utils::Utils;
+use std::sync::{Arc, atomic::{AtomicUsize, Ordering}};
 
 pub struct AuditLogger {
     rx: Receiver<EncryptedSignedEvent>,
-    record_counter: Arc<AtomicUsize>
+    record_counter: Arc<AtomicUsize>,
     prev_record_hash: Option<String>,
 }
 
@@ -38,7 +39,7 @@ impl AuditLogger {
             if let Err(e) = write_audit_record(&record).await {
                 eprintln!("[audit] gagal tulis record: {e}");
             }
-            
+
             self.record_counter.fetch_add(1, Ordering::Relaxed);
             self.prev_record_hash = Some(record.record_hash.clone());
         }
