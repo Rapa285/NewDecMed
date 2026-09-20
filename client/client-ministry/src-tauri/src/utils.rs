@@ -35,7 +35,7 @@ use crate::{
     current_fn,
     types::{ExecuteTxResponse, KeysEntry, ReserveGasResponse, AppState},
     ats::{
-        AuditEvent, AuditEventDetails, AuditOutcome, AuditSourceComponent, 
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
         AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
     },
 };
@@ -163,7 +163,7 @@ pub async fn execute_tx(
         actor_id: signer_identity,
         actor_type: AuditActorType::Kementerian,
         target_object_type: AuditTargetObjectType::Transaction,
-        target_object: tx_data,
+        target_object: serde_json::to_string(tx_data).unwrap_or_else(|_| "Error serializing data".to_string()),
         outcome: is_success,
         action_type: AuditActionType::Execute,
         details: AuditEventDetails::IotaTransaction {

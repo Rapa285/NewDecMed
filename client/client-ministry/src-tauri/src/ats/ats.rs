@@ -6,7 +6,7 @@ use anyhow::{anyhow, Context};
 use super::constants::{ATS_ENDPOINT, ATS_SERVER_PUBLIC_KEY};
 use super::crypto::{aes_encrypt, ecies_encrypt_key};
 use super::queue::{new_queue_entry, spawn_retry_worker, AtsQueue};
-use super::types::{AuditEvent, EncryptedSignedEvent,AuditSourceComponent};
+use super::types::{AuditEvent, EncryptedSignedEvent,AuditSourceComponent,Event};
 use crate::{
     types::AppState,
     current_fn,
@@ -37,7 +37,7 @@ impl ATSClient {
             source_component : AuditSourceComponent::MinistryClient,
             source_timestamp : Utc::now(),
             event : event,
-        }
+        };
 
         let keys_entry = parse_keys_entry(&state.keys_entry.get_secret().context(current_fn!())?)
         .context(current_fn!())?;

@@ -21,9 +21,16 @@ impl ATSClient {
     /// Mengambil keypair dari AppState secara langsung.
     pub fn send_event_from_state(
         state: &AppState,
-        event: AuditEvent,
+        event: Event,
         label: &'static str,
     ) {
+
+        let audit_event = AuditEvent{
+            source_component : AuditSourceComponent::MinistryClient,
+            source_timestamp : Utc::now(),
+            event : event,
+        };
+
         // Decode proxy keypair dari state (plain encoded string, tidak perlu PIN)
         let key_pair_str = state.proxy_iota_key_pair.clone();
         let iota_address = state.proxy_iota_address.clone();
@@ -37,7 +44,7 @@ impl ATSClient {
                 }
             };
 
-            Self::build_and_send(event, iota_address, &iota_key_pair, label).await;
+            Self::build_and_send(audit_event, iota_address, &iota_key_pair, label).await;
         });
     }
 

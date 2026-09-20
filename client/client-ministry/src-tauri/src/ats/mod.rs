@@ -7,5 +7,5 @@ pub mod types;
 pub use ats::ATSClient;
 pub use types::{
     AuditEvent, AuditEventDetails, AuditOutcome, AuditSourceComponent, 
-    AuditActionType, AuditActorType, AuditTargetObjectType
+    AuditActionType, AuditActorType, AuditTargetObjectType, Event,
 };

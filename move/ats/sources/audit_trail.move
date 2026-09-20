@@ -33,7 +33,27 @@ module ats::audit_log {
         vector::push_back(&mut store.records, new_record);
     }
 
-    public fun get_all_records(store: &AuditLogStore): &vector<LogRecord> {
-        &store.records
+    /// Kembalikan slice LogRecord dari store.
+    /// cursor: indeks awal (0-based), limit: maksimum item yang dikembalikan.
+    public fun get_logs(
+        store: &AuditLogStore,
+        cursor: u64,
+        limit: u64,
+        _ctx: &TxContext,
+    ): vector<LogRecord> {
+        let total = vector::length(&store.records);
+        let mut result = vector::empty<LogRecord>();
+        let mut i = cursor;
+        let end = if (cursor + limit > total) { total } else { cursor + limit };
+        while (i < end) {
+            vector::push_back(&mut result, *vector::borrow(&store.records, i));
+            i = i + 1;
+        };
+        result
+    }
+
+    /// Kembalikan total jumlah record di store.
+    public fun record_count(store: &AuditLogStore): u64 {
+        vector::length(&store.records)
     }
 }

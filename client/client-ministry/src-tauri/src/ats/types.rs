@@ -19,6 +19,7 @@ pub struct AuditEvent {
     pub event: Event
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Event {
     pub actor_id: String,
     pub actor_type: AuditActorType,
@@ -172,7 +173,7 @@ impl AuditEventDetails {
     }
 }
 
-impl AuditEvent {
+impl Event {
     pub fn event_type(&self) -> &'static str {
         self.details.event_type()
     }

@@ -299,24 +299,27 @@ impl AuditEventDetails {
 /// `cursor` is an opaque string (the previous response's `next_cursor`,
 /// which is an IOTA ObjectID in hex form) — pass it back unchanged to get
 /// the next page. Omit it to fetch the first page.
+// Ganti GetLogsQueryParams yang lama:
 #[derive(Debug, Deserialize)]
 pub struct GetLogsQueryParams {
-    pub cursor: Option<String>,
-    pub limit: Option<usize>,
+    /// Cursor berbasis offset (indeks awal), bukan ObjectID.
+    pub cursor: Option<u64>,
+    pub limit: Option<u64>,
 }
 
-/// A single row in the `GET /api/logs` response.
+// Response per record
 #[derive(Debug, Serialize)]
 pub struct ApiLogRecord {
-    pub object_id: String,
-    pub metadata: IotaLogMetadata,
+    pub index: u64,
+    pub json_data: String,        // raw JSON metadata
+    pub metadata: IotaLogMetadata, // sudah di-parse
 }
 
-/// Response body for `GET /api/logs`. Shape matches what the
-/// `audit-trail-client` (Tauri) app expects.
+// Response body GET /api/logs
 #[derive(Debug, Serialize)]
 pub struct GetLogsResponse {
     pub data: Vec<ApiLogRecord>,
-    pub next_cursor: Option<String>,
+    pub total: u64,
+    pub cursor: u64,
     pub has_next_page: bool,
 }

@@ -4,11 +4,10 @@ use serde_json::{json, Value};
 use tauri::{async_runtime::Mutex, State};
 use umbral_pre::encrypt;
 use uuid::Uuid;
-use chrono::Utc;
 
 use crate::{
     ats::{
-        AuditEvent, AuditEventDetails, AuditOutcome, AuditSourceComponent, 
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
         AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
     },
     client_error::ClientError,
@@ -86,8 +85,6 @@ pub async fn create_activation_key(
     // ── Audit: EV6 - Healthcare Facility Registration ─────────────────────────────────
     {
         let event = Event {
-            source_component: AuditSourceComponent::MinistryClient,
-            source_timestamp: Utc::now(),
             actor_id: admin_iota_address.to_string(),
             actor_type: AuditActorType::Kementerian,
             target_object_type: AuditTargetObjectType::ActivationKey,
@@ -184,8 +181,6 @@ pub async fn update_activation_key(
     // ── Audit: EV6 - Healthcare Facility Registration ─────────────────────────────────
     {
         let event = Event {
-            source_component: AuditSourceComponent::MinistryClient,
-            source_timestamp: Utc::now(),
             actor_id: admin_iota_address.to_string(),
             actor_type: AuditActorType::Kementerian,
             target_object_type: AuditTargetObjectType::ActivationKey,

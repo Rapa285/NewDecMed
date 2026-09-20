@@ -8,7 +8,7 @@ use iota_types::{
 
 use crate::{
     ats::{
-        AuditEvent, AuditEventDetails, AuditOutcome, AuditSourceComponent, 
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
         AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
     },
     client_error::ClientError,
@@ -22,7 +22,6 @@ use crate::{
         parse_move_read_only_result, reserve_gas,
     },
 };
-use chrono::Utc;
 
 
 pub struct MoveCall {
@@ -222,32 +221,32 @@ impl MoveCall {
             .await
             .context(current_fn!())?;
 
-        ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
         {
             let requester = sender.to_string();
 
             let event = Event {
-                source_component: AuditSourceComponent::MinistryClient,
-                source_timestamp: Utc::now(),
                 actor_id: requester,
                 actor_type: AuditActorType::Kementerian,
-                target_object_type: AuditTargetObjectType::Transaction,
-                target_object: tx_data,
-                outcome: is_success,
+                target_object_type: AuditTargetObjectType::GasRequest,
+                target_object: "GasRequest".to_string(),
+                outcome: AuditOutcome::Success,
                 action_type: AuditActionType::Execute,
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requester_id: requester,
+                details: AuditEventDetails::GasSponsorship {
                     gas_budget_requested: NANOS_PER_IOTA,
-                    reserve_duration_secs: u64,
-                    reservation_id: Option<u64>,
-                    sponsor_address: Option<String>,
-                    transaction_digest: Option<String>,
-                    gas_coin_object_ids: Vec<String>,
+                    reserve_duration_secs: 10,
+                    reservation_id: Some(reservation_id),
+                    sponsor_address: Some(sponsor_account.to_string()),
+                    transaction_digest: None,
+                    gas_coin_object_ids: gas_coins
+                        .iter()
+                        .map(|(object_id, _seq, _digest)| object_id.to_string())
+                        .collect(),
                 },
             };
             ATSClient::send_event_from_state(&state, event,"create_capability");
         }
-        ──────────────────────────────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
