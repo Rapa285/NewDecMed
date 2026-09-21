@@ -23,7 +23,10 @@ use crate::{
         handle_error_execute_tx, handle_error_move_call_read_only, move_call_read_only,
         parse_move_read_only_result, reserve_gas,
     },
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
 
 };
 
@@ -95,28 +98,28 @@ impl MoveCall {
         )
         .context(current_fn!())?;
 
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
 
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // {
+        //     let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "hospital-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
+        //     let event = Event {
+        //         source_component: "hospital-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorship {
+        //             requested_gas_budget: NANOS_PER_IOTA * 2,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
+        // // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
@@ -165,28 +168,28 @@ impl MoveCall {
         )
         .context(current_fn!())?;
 
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
 
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // {
+        //     let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "hospital-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
+        //     let event = Event {
+        //         source_component: "hospital-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorship {
+        //             requested_gas_budget: NANOS_PER_IOTA * 2,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
+        // // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
@@ -420,28 +423,28 @@ impl MoveCall {
         )
         .context(current_fn!())?;
 
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA, 10)
             .await
             .context(current_fn!())?;
         
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // {
+        //     let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "hospital-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
+        //     let event = Event {
+        //         source_component: "hospital-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorship {
+        //             requested_gas_budget: NANOS_PER_IOTA,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
+        // // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
@@ -523,28 +526,28 @@ impl MoveCall {
             ],
         )
         .context(current_fn!())?;
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
 
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // {
+        //     let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "hospital-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
+        //     let event = Event {
+        //         source_component: "hospital-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorship {
+        //             requested_gas_budget: NANOS_PER_IOTA * 2,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
+        // // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
@@ -600,28 +603,28 @@ impl MoveCall {
         )
         .context(current_fn!())?;
 
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
 
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // {
+        //     let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "hospital-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
+        //     let event = Event {
+        //         source_component: "hospital-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorship {
+        //             requested_gas_budget: NANOS_PER_IOTA * 2,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
+        // // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
@@ -672,28 +675,28 @@ impl MoveCall {
             ],
         )
         .context(current_fn!())?;
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
         
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // {
+        //     let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "hospital-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
+        //     let event = Event {
+        //         source_component: "hospital-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorship {
+        //             requested_gas_budget: NANOS_PER_IOTA * 2,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
+        // // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
@@ -745,28 +748,28 @@ impl MoveCall {
         )
         .context(current_fn!())?;
 
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
         
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // {
+        //     let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "hospital-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA * 2,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
+        //     let event = Event {
+        //         source_component: "hospital-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorship {
+        //             requested_gas_budget: NANOS_PER_IOTA * 2,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
+        // // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
@@ -816,28 +819,28 @@ impl MoveCall {
             ],
         )
         .context(current_fn!())?;
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA, 10)
             .await
             .context(current_fn!())?;
         
-        // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        {
-            let requester = sender.to_string();
+        // // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+        // {
+        //     let requester = sender.to_string();
 
-            let event = Event {
-                source_component: "hospital-client".to_string(),
-                actor: requester.clone(),
-                target_object: "IOTA Gas Station".to_string(),
-                outcome: AuditOutcome::Success,
-                action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-                details: AuditEventDetails::GasSponsorshipRequest {
-                    requested_gas_budget: NANOS_PER_IOTA,
-                    requester_id: requester,
-                },
-            };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        }
-        // ──────────────────────────────────────────────────────────────────────────────────
+        //     let event = Event {
+        //         source_component: "hospital-client".to_string(),
+        //         actor: requester.clone(),
+        //         target_object: "IOTA Gas Station".to_string(),
+        //         outcome: AuditOutcome::Success,
+        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
+        //         details: AuditEventDetails::GasSponsorship {
+        //             requested_gas_budget: NANOS_PER_IOTA,
+        //             requester_id: requester,
+        //         },
+        //     };
+        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        // }
+        // // ──────────────────────────────────────────────────────────────────────────────────
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await

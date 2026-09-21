@@ -98,7 +98,7 @@ pub async fn create_activation_key(
                 transaction_digest : tx_digest.clone(),
             },
         };
-       let _ = ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
+        let _ = ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -194,7 +194,7 @@ pub async fn update_activation_key(
                 transaction_digest : tx_digest.clone(),
             },
         };
-       let _ = ATSClient::send_event_from_state(&state, event,"update_activation_key/ev6");
+        let _ = ATSClient::send_event_from_state(&state, event,"update_activation_key/ev6");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

@@ -108,6 +108,8 @@ pub enum AuditActorType {
     Admin,
     Ministry,
     PREServer,
+    Unknown,
+    Client,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -124,6 +126,8 @@ pub enum AuditTargetObjectType {
     IPFSObject,
     GasReservation,
     PREEndPoint,
+    Account,
+
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -164,9 +168,7 @@ pub enum AuditEventDetails {
     Authentication {
         auth_method: String,
         role: String,
-        attempt_count: u32,
         failure_reason: Option<String>,
-        device_info: Option<String>,
     },
     #[serde(rename = "EV2")]
     QrValidation {
@@ -191,11 +193,6 @@ pub enum AuditEventDetails {
         patient_iota_address: String,
         record_index: Option<u64>,
         role_used: String,
-        purpose_used: String,
-        jwt_sub: String,
-        capability_valid: bool,
-        ipfs_cid: Option<String>,
-        reencryption_performed: bool,
     },
     #[serde(rename = "EV5")]
     PersonnelActivationKey {

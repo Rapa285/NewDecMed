@@ -29,7 +29,7 @@ impl ATSClient {
     ) {
 
         let audit_event = AuditEvent{
-            source_component : AuditSourceComponent::MinistryClient,
+            source_component : AuditSourceComponent::ProxyReencryption,
             source_timestamp : Utc::now(),
             event : event,
         };

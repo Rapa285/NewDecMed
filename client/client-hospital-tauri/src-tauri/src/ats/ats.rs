@@ -34,7 +34,7 @@ impl ATSClient {
     ) -> anyhow::Result<()> {
 
         let audit_event = AuditEvent{
-            source_component : AuditSourceComponent::MinistryClient,
+            source_component : AuditSourceComponent::HospitalClient,
             source_timestamp : Utc::now(),
             event : event,
         };

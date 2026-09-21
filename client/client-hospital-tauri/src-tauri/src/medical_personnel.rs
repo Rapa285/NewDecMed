@@ -1,3 +1,4 @@
+use strum_macros::EnumString;
 use std::str::FromStr;
 
 use anyhow::{anyhow, Context};
@@ -26,7 +27,10 @@ use crate::{
         get_pre_keys_from_keys_entry, parse_keys_entry, serde_deserialize_from_base64,
         serde_serialize_to_base64,
     },
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
 
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -39,6 +43,8 @@ pub async fn new_medical_record(
     patient_iota_address: String,
     patient_pre_public_key: String,
 ) -> Result<SuccessResponse<()>, HospitalError> {
+    let _state = _state.lock().await;
+
     let req_client = reqwest::Client::new();
 
     let (medical_metadata, patient_iota_address) = {
@@ -97,22 +103,32 @@ pub async fn new_medical_record(
 
     // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
     {
-        let state_guard = _state.lock().await;
+        let role = _state
+            .auth_state
+            .role
+            .clone()
+            .ok_or(anyhow!("Role not found"))?;
+        
+        let keys_entry = parse_keys_entry(&_state.keys_entry.get_secret().context(current_fn!())?)
+            .context(current_fn!())?;
+        let hospital_personnel_iota_address =
+            get_iota_address_from_keys_entry(&keys_entry).context(current_fn!())?;
 
         let event = Event {
-            source_component: "hospital-client".to_string(),
-            actor: patient_iota_address.to_string(),
-            target_object: patient_iota_address.to_string(),
+            actor_id: hospital_personnel_iota_address.to_string(),
+            actor_type: AuditActorType::from(role),
+            target_object_type: AuditTargetObjectType::MedicalRecord,
+            target_object: medical_metadata.capsule.clone(),
             outcome: AuditOutcome::Success,
-            action_type: "CREATE_MEDICAL_RECORD".to_string(),
+            action_type: AuditActionType::Create,
             details: AuditEventDetails::MedicalRecordAccess {
-                access_type: "Create".to_string(),
-                medical_record_id: patient_iota_address.to_string(),
-                capability_id: "hospital_capability".to_string(),
-                authorization_token_id: access_token.clone(),
+                patient_iota_address: patient_iota_address.clone().to_string(),
+                record_index: None,
+                role_used: format!("{:?}", role),
+
             },
         };
-        state_guard.ats_client.send_event(event, actor_address, actor_key_pair,"new_medical_record");
+        let _ = ATSClient::send_event_from_state(&_state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -158,7 +174,7 @@ pub async fn get_medical_record(
             "{}/medical-record?index={}&patient_iota_address={}",
             PROXY_BASE_URL,
             index.unwrap_or(0),
-            patient_iota_address
+            patient_iota_address.clone()
         ),
     )
     .await
@@ -274,22 +290,31 @@ pub async fn get_medical_record(
         "prevIndex": res.data.prev_index,
     });
 
+    let role = state
+            .auth_state
+            .role
+            .clone()
+            .ok_or(anyhow!("Role not found"))?;
+            
+    let hospital_personnel_iota_address =
+            get_iota_address_from_keys_entry(&keys_entry).context(current_fn!())?;
+            
     // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
     {
         let event = Event {
-            source_component: "hospital-client".to_string(),
-            actor: patient_iota_address.clone(),
-            target_object: patient_iota_address.clone(),
+            actor_id: hospital_personnel_iota_address.to_string(),
+            actor_type: AuditActorType::from(role),
+            target_object_type: AuditTargetObjectType::MedicalRecord,
+            target_object: "medical_metadata.capsule.clone()".to_string(),
             outcome: AuditOutcome::Success,
-            action_type: "READ_MEDICAL_RECORD".to_string(),
+            action_type: AuditActionType::Read,
             details: AuditEventDetails::MedicalRecordAccess {
-                access_type: "Read".to_string(),
-                medical_record_id: patient_iota_address.clone(),
-                capability_id: "hospital_capability".to_string(),
-                authorization_token_id: access_token.clone(),
+                patient_iota_address: patient_iota_address.clone(),
+                record_index: index,
+                role_used: format!("{:?}", role),
             },
         };
-       let _ = ATSClient::send_event_from_state(&state, event,"get_medical_record");
+        let _ = ATSClient::send_event_from_state(&state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -448,20 +473,30 @@ pub async fn get_medical_record_update(
 
     // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
     {
+        let role = state
+            .auth_state
+            .role
+            .clone()
+            .ok_or(anyhow!("Role not found"))?;
+        let keys_entry = parse_keys_entry(&state.keys_entry.get_secret().context(current_fn!())?)
+            .context(current_fn!())?;
+        let hospital_personnel_iota_address =
+            get_iota_address_from_keys_entry(&keys_entry).context(current_fn!())?;
+
         let event = Event {
-            source_component: "hospital-client".to_string(),
-            actor: patient_iota_address.clone(),
-            target_object: patient_iota_address.clone(),
+            actor_id: hospital_personnel_iota_address.to_string(),
+            actor_type: AuditActorType::from(role),
+            target_object_type: AuditTargetObjectType::MedicalRecord,
+            target_object: index.to_string(),
             outcome: AuditOutcome::Success,
-            action_type: "READ_MEDICAL_RECORD_UPDATE".to_string(),
+            action_type: AuditActionType::Update,
             details: AuditEventDetails::MedicalRecordAccess {
-                access_type: "ReadUpdate".to_string(),
-                medical_record_id: patient_iota_address.clone(),
-                capability_id: "hospital_capability".to_string(),
-                authorization_token_id: access_token.clone(),
+                patient_iota_address: patient_iota_address.clone(),
+                record_index: Some(index),
+                role_used: format!("{:?}", role),
             },
         };
-       let _ = ATSClient::send_event_from_state(&state, event,"get_medical_record_update");
+        let _ = ATSClient::send_event_from_state(&state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -661,6 +696,8 @@ pub async fn update_medical_record(
     patient_iota_address: String,
     patient_pre_public_key: String,
 ) -> Result<SuccessResponse<()>, HospitalError> {
+    let _state = _state.lock().await;
+
     let req_client = reqwest::Client::new();
 
     let (medical_metadata, patient_iota_address) = {
@@ -719,22 +756,31 @@ pub async fn update_medical_record(
 
     // ── Audit: EV4 - Medical Record Access ─────────────────────────────────────────────
     {
-        let state_guard = _state.lock().await;
+        let role = _state
+            .auth_state
+            .role
+            .clone()
+            .ok_or(anyhow!("Role not found"))?;
+
+        let keys_entry = parse_keys_entry(&_state.keys_entry.get_secret().context(current_fn!())?)
+            .context(current_fn!())?;
+        let hospital_personnel_iota_address =
+            get_iota_address_from_keys_entry(&keys_entry).context(current_fn!())?;
 
         let event = Event {
-            source_component: "hospital-client".to_string(),
-            actor: patient_iota_address.to_string(),
-            target_object: patient_iota_address.to_string(),
+            actor_id: hospital_personnel_iota_address.to_string(),
+            actor_type: AuditActorType::from(role),
+            target_object_type: AuditTargetObjectType::MedicalRecord,
+            target_object: medical_metadata.capsule.clone().to_string(),
             outcome: AuditOutcome::Success,
-            action_type: "UPDATE_MEDICAL_RECORD".to_string(),
+            action_type: AuditActionType::Update,
             details: AuditEventDetails::MedicalRecordAccess {
-                access_type: "Update".to_string(),
-                medical_record_id: patient_iota_address.to_string(),
-                capability_id: "hospital_capability".to_string(),
-                authorization_token_id: access_token.clone(),
+                patient_iota_address: patient_iota_address.clone().to_string(),
+                record_index:  None,
+                role_used: format!("{:?}", role),
             },
         };
-        state_guard.ats_client.send_event(event, actor_address, actor_key_pair,"update_medical_record");
+        let _ = ATSClient::send_event_from_state(&_state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

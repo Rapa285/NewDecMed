@@ -19,7 +19,10 @@ use crate::{
         get_iota_key_pair_from_keys_entry, get_pre_keys_from_keys_entry, parse_keys_entry,
         serde_serialize_to_base64,
     },
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
@@ -154,7 +157,7 @@ pub async fn hospital_admin_add_activation_key(
         let hospital_personnel_metadata = HospitalPersonnelMetadata {
             activation_key: activation_key.clone(),
             id: hospital_personnel_id.clone(),
-            role: role_type,
+            role: role_type.clone(),
         };
         let hospital_personnel_metadata_bytes =
             serde_json::to_vec(&hospital_personnel_metadata).context(current_fn!())?;
@@ -189,9 +192,9 @@ pub async fn hospital_admin_add_activation_key(
                 hospital_personnel_id.clone(),
             )
             .context(current_fn!())?,
-            hospital_personnel_id_part_hash,
+            hospital_personnel_id_part_hash.clone(),
             &role,
-            hospital_admin_iota_address,
+            hospital_admin_iota_address.clone(),
             hospital_admin_iota_key_pair,
         )
         .await
@@ -205,18 +208,22 @@ pub async fn hospital_admin_add_activation_key(
     // ── Audit: EV5 - Hospital Personnel Key Generation ─────────────────────────────────
     {
         let event = Event {
-            source_component: "hospital-client".to_string(),
-            actor: hospital_admin_iota_address.to_string(),
-            target_object: hospital_personnel_id.clone(),
+            actor_id: hospital_admin_iota_address.clone().to_string(),
+            actor_type: AuditActorType::Admin,
+            target_object_type: AuditTargetObjectType::ActivationKey,
+            target_object: hospital_personnel_activation_key.clone().to_string(),
             outcome: AuditOutcome::Success,
-            action_type: "GENERATE_PERSONNEL_ACTIVATION_KEY".to_string(),
-            details: AuditEventDetails::HospitalPersonnelKeyGeneration {
+            action_type: AuditActionType::Create,
+            details: AuditEventDetails::PersonnelActivationKey {
                 facility_id: hospital_admin_hospital_part.clone(),
                 personnel_id: hospital_personnel_id.clone(),
                 activation_key_id: hospital_personnel_activation_key.clone(),
+                admin_iota_address: hospital_admin_iota_address.clone().to_string(),
+                personnel_id_hash: hospital_personnel_id_part_hash,
+                role_assigned: role.clone(),
             },
         };
-       let _ = ATSClient::send_event_from_state(&state, event,"hospital_admin_add_activation_key");
+        let _ = ATSClient::send_event_from_state(&state, event,"hospital_admin_add_activation_key");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -304,7 +311,7 @@ pub async fn update_personnel_activation_key(
             &state,
             encoded_activation_key,
             serde_serialize_to_base64(&metadata).context(current_fn!())?,
-            personnel_id_part_hash,
+            personnel_id_part_hash.clone(),
             hospital_admin_iota_address,
             hospital_admin_iota_key_pair,
         )
@@ -322,18 +329,22 @@ pub async fn update_personnel_activation_key(
             .unwrap_or((String::new(), String::new()));
 
         let event = Event {
-            source_component: "hospital-client".to_string(),
-            actor: hospital_admin_iota_address.to_string(),
-            target_object: personnel_id.clone(),
+            actor_id: hospital_admin_iota_address.to_string(),
+            actor_type: AuditActorType::Admin,
+            target_object_type: AuditTargetObjectType::ActivationKey,
+            target_object: new_activation_key.clone(),
             outcome: AuditOutcome::Success,
-            action_type: "UPDATE_PERSONNEL_ACTIVATION_KEY".to_string(),
-            details: AuditEventDetails::HospitalPersonnelKeyGeneration {
-                facility_id: hospital_part,
+            action_type: AuditActionType::Update,
+            details: AuditEventDetails::PersonnelActivationKey {
+                facility_id: hospital_part.clone(),
                 personnel_id: personnel_id.clone(),
-                activation_key_id: new_activation_key.clone(),
+                activation_key_id: new_activation_key.clone().clone(),
+                admin_iota_address: hospital_admin_iota_address.clone().to_string(),
+                personnel_id_hash: personnel_id_part_hash.clone(),
+                role_assigned: role.clone(),
             },
         };
-       let _ = ATSClient::send_event_from_state(&state, event,"update_personnel_activation_key");
+        let _ = ATSClient::send_event_from_state(&state, event,"hospital_admin_add_activation_key");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

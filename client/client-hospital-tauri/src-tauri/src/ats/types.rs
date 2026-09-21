@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
-
+use crate::types::{HospitalPersonnelRole};
+use std::str::FromStr;
 // ── Tipe data publik ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,6 +60,7 @@ pub enum AuditActionType {
     Delete,
     Validate,
     Execute,
+    SignIn,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -69,6 +71,34 @@ pub enum AuditActorType {
     Admin,
     Ministry,
     PREServer,
+    Unknown,
+    Client,
+}
+
+impl From<HospitalPersonnelRole> for AuditActorType {
+    fn from(role: HospitalPersonnelRole) -> Self {
+        match role {
+            HospitalPersonnelRole::Admin => AuditActorType::Admin,
+            HospitalPersonnelRole::AdministrativePersonnel => AuditActorType::AdministrativePersonnel,
+            HospitalPersonnelRole::MedicalPersonnel => AuditActorType::MedicalPersonnel,
+        }
+    }
+}
+
+impl FromStr for AuditActorType {
+    type Err = String; // Anda bisa mengganti ini dengan custom error type
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "AdministrativePersonnel" => Ok(AuditActorType::AdministrativePersonnel),
+            "MedicalPersonnel" => Ok(AuditActorType::MedicalPersonnel),
+            "Patient" => Ok(AuditActorType::Patient),
+            "Admin" => Ok(AuditActorType::Admin),
+            "Ministry" => Ok(AuditActorType::Ministry),
+            "PREServer" => Ok(AuditActorType::PREServer),
+            _ => Err(format!("'{}' bukan tipe AuditActorType yang valid", s)),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -82,7 +112,8 @@ pub enum AuditTargetObjectType {
     Nonce,
     AccessKeys,
     Transaction,
-    GasRequest,
+    GasReservation,
+    Account,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -92,9 +123,7 @@ pub enum AuditEventDetails {
     Authentication {
         auth_method: String,
         role: String,
-        attempt_count: u32,
         failure_reason: Option<String>,
-        device_info: Option<String>,
     },
 
     #[serde(rename = "EV4")]
@@ -102,21 +131,16 @@ pub enum AuditEventDetails {
         patient_iota_address: String,
         record_index: Option<u64>,
         role_used: String,
-        purpose_used: String,
-        jwt_sub: String,
-        capability_valid: bool,
-        ipfs_cid: Option<String>,
-        reencryption_performed: bool,
     },
     
     #[serde(rename = "EV5")]
     PersonnelActivationKey {
         admin_iota_address: String,
+        personnel_id: String,
         personnel_id_hash: String,
         role_assigned: String,
-        hospital_id_hash: String,
-        transaction_digest: String,
-        activation_key_hash: String,
+        facility_id: String,
+        activation_key_id: String,
     },
 
     #[serde(rename = "EV8")]

@@ -95,24 +95,31 @@ impl MoveCall {
             .context(current_fn!())?;
 
         // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
-        // {
-        //     let requester = sender.to_string();
+        {
+            let requester = sender.to_string();
 
-        //     let event = Event {
-        //         source_component: "ministry-client".to_string(),
-        //         actor: requester.clone(),
-        //         target_object: "IOTA Gas Station".to_string(),
-        //         outcome: AuditOutcome::Success,
-        //         action_type: "GAS_SPONSORSHIP_REQUEST".to_string(),
-        //         details: AuditEventDetails::GasSponsorshipRequest {
-        //             requested_gas_budget: NANOS_PER_IOTA,
-        //             requester_id: requester,
-        //         },
-        //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
-        // }
+            let event = Event {
+                actor_id: requester,
+                actor_type: AuditActorType::Ministry,
+                target_object_type: AuditTargetObjectType::GasReservation,
+                target_object: reservation_id.to_string(),
+                outcome: AuditOutcome::Success,
+                action_type: AuditActionType::Execute,
+                details: AuditEventDetails::GasSponsorship {
+                    gas_budget_requested: NANOS_PER_IOTA,
+                    reserve_duration_secs: 10,
+                    reservation_id: Some(reservation_id),
+                    sponsor_address: Some(sponsor_account.to_string()),
+                    transaction_digest: None,
+                    gas_coin_object_ids: gas_coins
+                        .iter()
+                        .map(|(object_id, _seq, _digest)| object_id.to_string())
+                        .collect(),
+                },
+            };
+           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        }
         // ──────────────────────────────────────────────────────────────────────────────────
-
 
         let ref_gas_price = get_ref_gas_price(&iota_client)
             .await
@@ -229,7 +236,7 @@ impl MoveCall {
                 actor_id: requester,
                 actor_type: AuditActorType::Ministry,
                 target_object_type: AuditTargetObjectType::GasReservation,
-                target_object: Some(reservation_id),
+                target_object: reservation_id.to_string(),
                 outcome: AuditOutcome::Success,
                 action_type: AuditActionType::Execute,
                 details: AuditEventDetails::GasSponsorship {
