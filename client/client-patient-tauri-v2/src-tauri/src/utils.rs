@@ -14,7 +14,7 @@ use argon2::{
     Algorithm, Argon2, Params, PasswordHash, PasswordVerifier, Version,
 };
 use iota_json_rpc_types::{
-    DevInspectResults, IotaObjectDataOptions, IotaTransactionBlockEffectsAPI,
+    DevInspectResults, IotaObjectDataOptions, IotaTransactionBlockEffectsAPI,IotaTransactionBlockEffects,
 };
 use iota_keys::key_derive::derive_key_pair_from_path;
 use iota_types::base_types::{IotaAddress, ObjectID, ObjectRef};
@@ -39,10 +39,16 @@ use crate::{
 use crate::{
     constants::{GAS_STATION_BASE_URL, HASH_SALT, IOTA_URL},
     current_fn,
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
+    types::{AppState}
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 pub async fn reserve_gas(
+    state: &AppState,
     gas_budget: u64,
     reserve_duration_secs: u64,
 ) -> Result<(IotaAddress, u64, Vec<ObjectRef>)> {
@@ -52,7 +58,7 @@ pub async fn reserve_gas(
         .bearer_auth("token")
         .json(&json!({
             "gas_budget": gas_budget,
-            "reserve_duration_secs": reserve_duration_secs
+        "reserve_duration_secs": reserve_duration_secs
         }))
         .send()
         .await
@@ -61,8 +67,8 @@ pub async fn reserve_gas(
         .json::<ReserveGasResponse>()
         .await
         .context(current_fn!())?;
-
-    Ok(res_body
+    
+    let (sponsor_account, reservation_id, gas_coins) = res_body
         .result
         .map(|result| {
             (
@@ -72,16 +78,64 @@ pub async fn reserve_gas(
                     .gas_coins
                     .into_iter()
                     .map(|c| c.to_object_ref())
-                    .collect(),
+                    .collect::<Vec<_>>(),
             )
         })
-        .ok_or(anyhow!("Reserve gas result not found").context(current_fn!()))?)
+        .context(current_fn!())?;
+    
+    // ── Audit: EV9 - Gas Sponsorship Request ───────────────────────────────────────────
+    {
+        // let state = state.lock().await;
+        let keys_entry = parse_keys_entry(&state.keys_entry.get_secret().context(current_fn!())?)
+            .context(current_fn!())?;
+
+        // let hospital_personnel_iota_address =
+        //         get_iota_address_from_keys_entry(&keys_entry).context(current_fn!())?;
+
+        // let role = state
+        //     .auth_state
+        //     .role
+        //     .clone()
+        //     .ok_or(anyhow!("Role not found"))?;
+
+        let event = Event {
+            actor_id: "HospitalClient".to_string(),
+            actor_type: AuditActorType::Client,
+            target_object_type: AuditTargetObjectType::GasReservation,
+            target_object: reservation_id.to_string(),
+            outcome: AuditOutcome::Success,
+            action_type: AuditActionType::Execute,
+            details: AuditEventDetails::GasSponsorship {
+                gas_budget_requested: gas_budget,
+                reserve_duration_secs: reserve_duration_secs.clone(),
+                reservation_id: Some(reservation_id),
+                sponsor_address: Some(sponsor_account.to_string()),
+                transaction_digest: None,
+                gas_coin_object_ids: gas_coins
+                    .iter()
+                    .map(|obj_ref| obj_ref.0.to_string())
+                    .collect(),
+            },
+        };
+        let _ = ATSClient::send_event_from_state(&state, event, "create_capability");
+    }
+    // ──────────────────────────────────────────────────────────────────────────────────
+
+    Ok((sponsor_account, reservation_id, gas_coins))
 }
 
 pub async fn execute_tx(
+    state: &AppState,
     tx: Envelope<SenderSignedData, EmptySignInfo>,
     reservation_id: u64,
 ) -> Result<ExecuteTxResponse> {
+
+    let signer_identity = tx.data().intent_message().value.sender().to_string();
+    let payload_hash = tx.digest().to_string();
+    let tx_data = &tx.data().intent_message().value;
+    let sponsor_address = tx_data.gas_data().owner.to_string();
+
+    // println!("tx data : {data:?}");
     let (tx_base_64, signature_base_64) = tx.to_tx_bytes_and_signatures();
 
     let req_client = reqwest::Client::new();
@@ -96,11 +150,82 @@ pub async fn execute_tx(
         .send()
         .await
         .context(current_fn!())?;
-
-    Ok(res
+    
+    // ── Audit: EV8 - IOTA TX ───────────────────────────────────────────────────
+    
+    let ex_tx_res = res
         .json::<ExecuteTxResponse>()
         .await
-        .context(current_fn!())?)
+        .context(current_fn!())?;
+    
+    // println!("ex tx res : {ex_tx_res:?}");
+
+    let mut transaction_digest = String::from("unknown");
+    let mut network_confirmation_status = String::from("unknown");
+    let mut gas_used: Option<u64> = None;
+    let mut is_success = AuditOutcome::Failure;
+
+    if let Some(ref effects_enum) = ex_tx_res.effects {
+        let IotaTransactionBlockEffects::V1(ref effects) = effects_enum;
+
+        // Ambil Digest dari efek yang benar-benar terjadi
+        transaction_digest = effects.transaction_digest.to_string();
+
+        // Cek status kesuksesan transaksi
+        if effects.status.is_ok() {
+            network_confirmation_status = String::from("success");
+            is_success = AuditOutcome::Success;
+        } else {
+            network_confirmation_status = String::from("failure");
+            // Bisa juga ambil pesan error-nya jika ada
+            // network_confirmation_status = format!("failure: {:?}", effects.status);
+        }
+
+        // Hitung total gas used (computation + storage - rebate)
+        let gas = &effects.gas_used;
+        let total_gas = (gas.computation_cost + gas.storage_cost).saturating_sub(gas.storage_rebate);
+        gas_used = Some(total_gas);
+    }
+
+    let mut move_module = String::from("unknown");
+    let mut move_function = String::from("unknown");
+
+    // Lakukan pattern matching untuk mengekstrak Programmable Transaction
+    if let iota_types::transaction::TransactionKind::ProgrammableTransaction(pt) = tx_data.kind() {
+        // Karena dalam 1 transaksi bisa ada banyak perintah (commands),
+        // kita loop untuk mencari perintah MoveCall.
+        for command in &pt.commands {
+            if let iota_types::transaction::Command::MoveCall(move_call) = command {
+                move_module = move_call.module.to_string();
+                move_function = move_call.function.to_string();
+                
+                // Jika kamu hanya butuh MoveCall pertama, kita bisa break di sini
+                break; 
+            }
+        }
+    }
+
+    let event = Event {
+        actor_id: signer_identity,
+        actor_type: AuditActorType::Ministry,
+        target_object_type: AuditTargetObjectType::Transaction,
+        target_object: serde_json::to_string(tx_data).unwrap_or_else(|_| "Error serializing data".to_string()),
+        outcome: is_success,
+        action_type: AuditActionType::Execute,
+        details: AuditEventDetails::IotaTransaction {
+            transaction_digest: transaction_digest,
+            payload_hash: payload_hash,
+            move_function: move_function,
+            move_module: move_module,
+            network_confirmation_status: network_confirmation_status,
+            gas_used: gas_used,
+            sponsor_address: sponsor_address,
+        },
+    };
+
+   let _ = ATSClient::send_event_from_state(&state, event,"iota_transaction");
+
+    Ok(ex_tx_res)
 }
 
 pub fn parse_keys_entry(keys_entry: &Vec<u8>) -> Result<KeysEntry> {

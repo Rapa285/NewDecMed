@@ -1,6 +1,11 @@
 pub mod ats;
-pub mod types;
 pub mod constants;
+pub mod crypto;
+pub mod queue;
+pub mod types;
 
 pub use ats::ATSClient;
-pub use types::{AuditEvent, AuditOutcome, AuditEventDetails};
+pub use types::{
+    AuditEvent, AuditEventDetails, AuditOutcome, AuditSourceComponent, 
+    AuditActionType, AuditActorType, AuditTargetObjectType, Event,
+};

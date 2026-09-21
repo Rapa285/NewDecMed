@@ -157,6 +157,7 @@ pub async fn signup(
     let _ = state
         .move_call
         .signup(
+            &state,
             id_hash,
             serde_serialize_to_base64(&private_administrative_metadata).context(current_fn!())?,
             patient_iota_address,

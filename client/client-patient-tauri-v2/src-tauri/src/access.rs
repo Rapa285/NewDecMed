@@ -100,6 +100,7 @@ pub async fn revoke_access(
     let _ = state
         .move_call
         .revoke_access(
+            &state,
             hospital_personnel_address,
             index,
             patient_iota_address,

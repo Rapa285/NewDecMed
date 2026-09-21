@@ -1,12 +1,16 @@
 use serde::{Serialize, Deserialize};
-
+use chrono::{DateTime, Utc};
+use crate::types::{HospitalPersonnelRole};
+use std::str::FromStr;
 // ── Tipe data publik ──────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SignedAuditEvent {
-    pub payload: String,
-    pub signature: String,
-    pub public_key: String,
+pub struct EncryptedSignedEvent {
+    pub enc_aes_key: String,   // base64
+    pub ciphertext: String,    // base64
+    pub nonce: String,         // base64
+    pub signature: String,     // base64: IotaSignature atas ciphertext bytes
+    pub iota_address: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -16,6 +20,7 @@ pub struct AuditEvent {
     pub event: Event
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Event {
     pub actor_id: String,
     pub actor_type: AuditActorType,
@@ -55,6 +60,7 @@ pub enum AuditActionType {
     Delete,
     Validate,
     Execute,
+    SignIn,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -65,6 +71,34 @@ pub enum AuditActorType {
     Admin,
     Ministry,
     PREServer,
+    Unknown,
+    Client,
+}
+
+impl From<HospitalPersonnelRole> for AuditActorType {
+    fn from(role: HospitalPersonnelRole) -> Self {
+        match role {
+            HospitalPersonnelRole::Admin => AuditActorType::Admin,
+            HospitalPersonnelRole::AdministrativePersonnel => AuditActorType::AdministrativePersonnel,
+            HospitalPersonnelRole::MedicalPersonnel => AuditActorType::MedicalPersonnel,
+        }
+    }
+}
+
+impl FromStr for AuditActorType {
+    type Err = String; // Anda bisa mengganti ini dengan custom error type
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "AdministrativePersonnel" => Ok(AuditActorType::AdministrativePersonnel),
+            "MedicalPersonnel" => Ok(AuditActorType::MedicalPersonnel),
+            "Patient" => Ok(AuditActorType::Patient),
+            "Admin" => Ok(AuditActorType::Admin),
+            "Ministry" => Ok(AuditActorType::Ministry),
+            "PREServer" => Ok(AuditActorType::PREServer),
+            _ => Err(format!("'{}' bukan tipe AuditActorType yang valid", s)),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -78,6 +112,8 @@ pub enum AuditTargetObjectType {
     Nonce,
     AccessKeys,
     Transaction,
+    GasReservation,
+    Account,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,27 +123,32 @@ pub enum AuditEventDetails {
     Authentication {
         auth_method: String,
         role: String,
-        attempt_count: u32,
         failure_reason: Option<String>,
-        device_info: Option<String>,
     },
-    #[serde(rename = "EV2")]
-    QrValidation {
-        qr_content_hash: String,
-        hospital_personnel_iota_address: String,
-        hospital_personnel_pre_public_key_fingerprint: String,
-        hospital_name: String,
-        hospital_personnel_name: String,
-        validation_step: String,
-    },
+
     #[serde(rename = "EV3")]
     CapabilityCreation {
         access_type: String,
-        exp_duration_ms: u64,
-        k_frag_fingerprint: String,
         transaction_digest: String,
-        hospital_name: String,
+        receiver: String,
         nonce_used: String,
+    },
+
+    #[serde(rename = "EV4")]
+    MedicalRecordAccess {
+        patient_iota_address: String,
+        record_index: Option<u64>,
+        role_used: String,
+    },
+    
+    #[serde(rename = "EV5")]
+    PersonnelActivationKey {
+        admin_iota_address: String,
+        personnel_id: String,
+        personnel_id_hash: String,
+        role_assigned: String,
+        facility_id: String,
+        activation_key_id: String,
     },
 
     #[serde(rename = "EV8")]
@@ -120,6 +161,7 @@ pub enum AuditEventDetails {
         gas_used: Option<u64>,
         sponsor_address: String,
     },
+
     #[serde(rename = "EV9")]
     GasSponsorship {
         gas_budget_requested: u64,
@@ -130,12 +172,4 @@ pub enum AuditEventDetails {
         gas_coin_object_ids: Vec<String>,
     },
 
-    #[serde(rename = "EV12")]
-    IotaMetadataOperation {
-        object_id: String,
-        object_type: String,
-        move_function: String,
-        is_mutable: bool,
-        transaction_digest: Option<String>,
-    },
 }

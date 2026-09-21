@@ -10,7 +10,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::move_call::MoveCall;
-use crate::ats::ATSClient;
+// use crate::ats::ATSClient;
 
 // Enum.
 
@@ -59,7 +59,6 @@ pub struct AdministrativeData {
 }
 
 pub struct AppState {
-    pub ats_client: ATSClient,
     pub administrative_data: Option<AdministrativeData>,
     pub auth_state: AuthState,
     pub keys_entry: Entry,

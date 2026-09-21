@@ -325,6 +325,7 @@ pub async fn update_profile(
     let _ = state
         .move_call
         .update_administrative_metadata(
+            &state,
             serde_serialize_to_base64(&private_administrative_metadata).context(current_fn!())?,
             patient_iota_address,
             patient_iota_key_pair,

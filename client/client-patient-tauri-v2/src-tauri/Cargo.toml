@@ -63,3 +63,4 @@ thiserror = "2.0"
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread"] }
+p256 = { version = "0.13", features = ["ecdh", "pkcs8", "pem"] }

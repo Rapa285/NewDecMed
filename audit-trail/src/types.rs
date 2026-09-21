@@ -182,10 +182,8 @@ pub enum AuditEventDetails {
     #[serde(rename = "EV3")]
     CapabilityCreation {
         access_type: String,
-        exp_duration_ms: u64,
-        k_frag_fingerprint: String,
         transaction_digest: String,
-        hospital_name: String,
+        receiver: String,
         nonce_used: String,
     },
     #[serde(rename = "EV4")]

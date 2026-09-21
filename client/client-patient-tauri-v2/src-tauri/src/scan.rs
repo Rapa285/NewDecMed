@@ -23,7 +23,10 @@ use crate::{
         process_qr_image, serde_deserialize_from_base64, serde_serialize_to_base64,
         sys_time_to_iso,
     },
-    ats::{AuditEvent, AuditEventDetails, AuditOutcome},
+    ats::{
+        AuditEvent, AuditEventDetails, AuditOutcome, Event,
+        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+    },
 };
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -136,7 +139,7 @@ pub async fn create_access(
     };
 
     let signature = {
-        let intent_message = IntentMessage::new(Intent::personal_message(), nonce);
+        let intent_message = IntentMessage::new(Intent::personal_message(), nonce.clone());
         Signature::new_secure(&intent_message, &patient_iota_key_pair)
     };
 
@@ -196,7 +199,7 @@ pub async fn create_access(
 
         let metadata_update = if access_token.access_token_update.is_some() {
             let data_update = MoveCreateAccessData {
-                access_token: access_token.access_token_update.unwrap(),
+                access_token: access_token.access_token_update.clone().unwrap(),
                 patient_name,
                 patient_iota_address: patient_iota_address.to_string(),
                 patient_pre_public_key: Some(
@@ -231,6 +234,7 @@ pub async fn create_access(
     let _ = state
         .move_call
         .create_access(
+            &state,
             date,
             &hospital_personnel_iota_address,
             metadata,
@@ -240,7 +244,7 @@ pub async fn create_access(
         .await
         .context(current_fn!())?;
     
-    // ── Audit: EV3 - Capability Issuance ───────────────────────────────────────────────
+    // ── Audit: EV3 - Capability Creation ───────────────────────────────────────────────
     {
         let scope = if metadata_update.is_some() {
             "Read,Update".to_string()
@@ -249,16 +253,17 @@ pub async fn create_access(
         };
 
         let event = Event {
-            source_component: "patient-client".to_string(),
-            actor: patient_iota_address.to_string(),
-            target_object: hospital_personnel_iota_address.to_string(),
+            actor_id: patient_iota_address.to_string(),
+            actor_type: AuditActorType::Patient,
+            target_object_type: AuditTargetObjectType::AccessCapability,
+            target_object: format!("{:?}",access_token),
             outcome: AuditOutcome::Success,
-            action_type: "CREATE_ACCESS_CAPABILITY".to_string(),
-            details: AuditEventDetails::CapabilityIssuance {
-                capability_id: access_token.access_token_read.clone(),
-                access_scope: scope,
-                expiry_duration: 3600, // Durasi standar (dalam detik), sesuaikan jika ada variabel durasi spesifik
+            action_type: AuditActionType::Create,
+            details: AuditEventDetails::CapabilityCreation {
+                access_type: scope,
                 transaction_digest: signature.encode_base64(),
+                receiver: hospital_personnel_iota_address.to_string(),
+                nonce_used: nonce.clone(),
             },
         };
        let _ = ATSClient::send_event_from_state(&state, event,"create_access");
@@ -304,21 +309,21 @@ pub async fn process_qr(
     };
 
     // ── Audit: EV2 - QR Delegation ─────────────────────────────────────────────────────
-    {
-        let event = Event {
-            source_component: "patient-client".to_string(),
-            actor: patient_iota_address.to_string(),
-            target_object: hospital_personnel_iota_address.clone().to_string(),
-            outcome: AuditOutcome::Success,
-            action_type: "PROCESS_QR_DELEGATION".to_string(),
-            details: AuditEventDetails::QRDelegation {
-                qr_payload_id: hp_addr_pub_key.clone().to_string(),
-                recipient_identity: hospital_personnel_iota_address.clone().to_string(),
-                signature_valid: true,
-            },
-        };
-       let _ = ATSClient::send_event_from_state(&state, event,"process_qr");
-    }
+    // {
+    //     let event = Event {
+    //         source_component: "patient-client".to_string(),
+    //         actor: patient_iota_address.to_string(),
+    //         target_object: hospital_personnel_iota_address.clone().to_string(),
+    //         outcome: AuditOutcome::Success,
+    //         action_type: "PROCESS_QR_DELEGATION".to_string(),
+    //         details: AuditEventDetails::QrValidation {
+    //             qr_payload_id: hp_addr_pub_key.clone().to_string(),
+    //             recipient_identity: hospital_personnel_iota_address.clone().to_string(),
+    //             signature_valid: true,
+    //         },
+    //     };
+    //    let _ = ATSClient::send_event_from_state(&state, event,"process_qr");
+    // }
     // ──────────────────────────────────────────────────────────────────────────────────
 
     Ok(SuccessResponse {

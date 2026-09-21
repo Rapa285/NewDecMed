@@ -14,7 +14,7 @@ use crate::{
     patient_error::PatientError,
     types::{
         DecmedPackage, MovePatientAccessLog, MovePatientAdministrativeMetadata,
-        MovePatientMedicalMetadata,
+        MovePatientMedicalMetadata, AppState,
     },
     utils::{
         construct_pt, construct_shared_object_call_arg, construct_sponsored_tx_data, execute_tx,
@@ -71,6 +71,7 @@ impl MoveCall {
 
     pub async fn create_access(
         &self,
+        state : &AppState,
         date: String,
         hospital_personnel_address: &IotaAddress,
         metadata: Vec<String>,
@@ -96,7 +97,7 @@ impl MoveCall {
         )
         .context(current_fn!())?;
 
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
         let ref_gas_price = get_ref_gas_price(&iota_client)
@@ -115,7 +116,7 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = execute_tx(tx, reservation_id)
+        let response = execute_tx(state, tx, reservation_id)
             .await
             .context(current_fn!())?;
 
@@ -338,6 +339,7 @@ impl MoveCall {
 
     pub async fn revoke_access(
         &self,
+        state : &AppState,
         hospital_personnel_address: IotaAddress,
         index: u64,
         sender: IotaAddress,
@@ -358,7 +360,7 @@ impl MoveCall {
             ],
         )
         .context(current_fn!())?;
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
         let ref_gas_price = get_ref_gas_price(&iota_client)
@@ -377,7 +379,7 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = execute_tx(tx, reservation_id)
+        let response = execute_tx(state, tx, reservation_id)
             .await
             .context(current_fn!())?;
 
@@ -388,6 +390,7 @@ impl MoveCall {
 
     pub async fn signup(
         &self,
+        state : &AppState,
         patient_id: String,
         private_metadata: String,
         sender: IotaAddress,
@@ -407,7 +410,7 @@ impl MoveCall {
             ],
         )
         .context(current_fn!())?;
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
         let ref_gas_price = get_ref_gas_price(&iota_client)
@@ -426,7 +429,7 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = execute_tx(tx, reservation_id)
+        let response = execute_tx(state, tx, reservation_id)
             .await
             .context(current_fn!())?;
 
@@ -437,6 +440,7 @@ impl MoveCall {
 
     pub async fn update_administrative_metadata(
         &self,
+        state : &AppState,
         private_metadata: String,
         sender: IotaAddress,
         sender_key_pair: IotaKeyPair,
@@ -454,7 +458,7 @@ impl MoveCall {
             ],
         )
         .context(current_fn!())?;
-        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(NANOS_PER_IOTA * 2, 10)
+        let (sponsor_account, reservation_id, gas_coins) = reserve_gas(state, NANOS_PER_IOTA * 2, 10)
             .await
             .context(current_fn!())?;
         let ref_gas_price = get_ref_gas_price(&iota_client)
@@ -473,7 +477,7 @@ impl MoveCall {
         let signer = sender_key_pair;
         let tx = Transaction::from_data_and_signer(tx_data, vec![&signer]);
 
-        let response = execute_tx(tx, reservation_id)
+        let response = execute_tx(state, tx, reservation_id)
             .await
             .context(current_fn!())?;
 

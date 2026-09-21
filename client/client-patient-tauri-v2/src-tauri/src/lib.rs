@@ -133,8 +133,9 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
         }
     }
 
+    ATSClient::start_retry_worker();
+
     app.manage(Mutex::new(AppState {
-        ats_client: ATSClient::new(),
         administrative_data: None,
         auth_state,
         keys_entry,
