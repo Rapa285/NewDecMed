@@ -15,9 +15,9 @@ use crate::{
     proxy_error::{ProxyError, ResultExt},
     types::{AppState, CurrentUser, JwtClaims},
     utils::Utils,
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 };
 
@@ -53,7 +53,7 @@ pub async fn auth_middleware(
                 rejection_reason: rej,
             },
         };
-       let _ = ATSClient::send_event_from_state(&state, event,"auth_middleware");
+       let _ = ALSClient::send_event_from_state(&state, event,"auth_middleware");
     };
 
     // 2. Ekstrak Header
@@ -148,7 +148,7 @@ pub async fn auth_middleware(
     };
 
     // 5. Kirim event audit secara asinkron
-    let _ = ATSClient::send_event_from_state(&state, audit_event, "pre_service_request");
+    let _ = ALSClient::send_event_from_state(&state, audit_event, "pre_service_request");
 
     let response = next.run(request).await;
     println!("keluar auth middleware");

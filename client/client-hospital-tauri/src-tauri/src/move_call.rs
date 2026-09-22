@@ -23,9 +23,9 @@ use crate::{
         handle_error_execute_tx, handle_error_move_call_read_only, move_call_read_only,
         parse_move_read_only_result, reserve_gas,
     },
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 
 };
@@ -117,7 +117,7 @@ impl MoveCall {
         //             requester_id: requester,
         //         },
         //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        //    let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         // }
         // // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -187,7 +187,7 @@ impl MoveCall {
         //             requester_id: requester,
         //         },
         //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        //    let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         // }
         // // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -442,7 +442,7 @@ impl MoveCall {
         //             requester_id: requester,
         //         },
         //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        //    let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         // }
         // // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -545,7 +545,7 @@ impl MoveCall {
         //             requester_id: requester,
         //         },
         //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        //    let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         // }
         // // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -622,7 +622,7 @@ impl MoveCall {
         //             requester_id: requester,
         //         },
         //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        //    let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         // }
         // // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -694,7 +694,7 @@ impl MoveCall {
         //             requester_id: requester,
         //         },
         //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        //    let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         // }
         // // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -767,7 +767,7 @@ impl MoveCall {
         //             requester_id: requester,
         //         },
         //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        //    let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         // }
         // // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -838,7 +838,7 @@ impl MoveCall {
         //             requester_id: requester,
         //         },
         //     };
-        //    let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+        //    let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         // }
         // // ──────────────────────────────────────────────────────────────────────────────────
 

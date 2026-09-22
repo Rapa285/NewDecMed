@@ -10,9 +10,9 @@ use crate::{
         generate_iota_keys_ed, parse_keys_entry, serde_serialize_to_base64, sha_hash,
         validate_by_regex,
     },
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};

@@ -23,9 +23,9 @@ use crate::{
         process_qr_image, serde_deserialize_from_base64, serde_serialize_to_base64,
         sys_time_to_iso,
     },
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 };
 
@@ -266,7 +266,7 @@ pub async fn create_access(
                 nonce_used: nonce.clone(),
             },
         };
-       let _ = ATSClient::send_event_from_state(&state, event,"create_access");
+       let _ = ALSClient::send_event_from_state(&state, event,"create_access");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -322,7 +322,7 @@ pub async fn process_qr(
     //             signature_valid: true,
     //         },
     //     };
-    //    let _ = ATSClient::send_event_from_state(&state, event,"process_qr");
+    //    let _ = ALSClient::send_event_from_state(&state, event,"process_qr");
     // }
     // ──────────────────────────────────────────────────────────────────────────────────
 

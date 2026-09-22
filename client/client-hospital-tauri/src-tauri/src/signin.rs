@@ -13,9 +13,9 @@ use crate::{
         encode_activation_key_from_keys_entry, generate_iota_keys_ed, parse_keys_entry,
         serde_serialize_to_base64, sha_hash,get_iota_key_pair_from_keys_entry,get_iota_address_from_keys_entry,
     },
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 
 };
@@ -102,7 +102,7 @@ pub async fn signin(
                     failure_reason: Some("Account not registered".to_string()),
                 },
             };
-            let _ = ATSClient::send_event_from_state(&state, event,"signin");
+            let _ = ALSClient::send_event_from_state(&state, event,"signin");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -157,7 +157,7 @@ pub async fn signin(
                 failure_reason: Some("Account not registered".to_string()),
             },
         };
-        let _ = ATSClient::send_event_from_state(&state, event,"signin");
+        let _ = ALSClient::send_event_from_state(&state, event,"signin");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

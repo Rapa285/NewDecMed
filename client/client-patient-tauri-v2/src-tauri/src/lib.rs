@@ -12,7 +12,7 @@ mod signup;
 mod types;
 mod utils;
 
-mod ats;
+mod als;
 
 use anyhow::Context;
 use constants::{
@@ -29,7 +29,7 @@ use move_call::MoveCall;
 use std::str::FromStr;
 use tauri::{async_runtime::Mutex, Manager};
 use types::{AppState, AuthState, DecmedPackage, KeysEntry, ScanState, SignInState, SignUpState};
-use ats::ATSClient;
+use als::ALSClient;
 
 fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Error>> {
     // #[cfg(target_os = "android")]
@@ -133,7 +133,7 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
         }
     }
 
-    ATSClient::start_retry_worker();
+    ALSClient::start_retry_worker();
 
     app.manage(Mutex::new(AppState {
         administrative_data: None,

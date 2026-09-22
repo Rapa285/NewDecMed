@@ -19,9 +19,9 @@ use crate::{
         get_iota_key_pair_from_keys_entry, get_pre_keys_from_keys_entry, parse_keys_entry,
         serde_serialize_to_base64,
     },
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 };
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -223,7 +223,7 @@ pub async fn hospital_admin_add_activation_key(
                 role_assigned: role.clone(),
             },
         };
-        let _ = ATSClient::send_event_from_state(&state, event,"hospital_admin_add_activation_key");
+        let _ = ALSClient::send_event_from_state(&state, event,"hospital_admin_add_activation_key");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -344,7 +344,7 @@ pub async fn update_personnel_activation_key(
                 role_assigned: role.clone(),
             },
         };
-        let _ = ATSClient::send_event_from_state(&state, event,"hospital_admin_add_activation_key");
+        let _ = ALSClient::send_event_from_state(&state, event,"hospital_admin_add_activation_key");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

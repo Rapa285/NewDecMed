@@ -27,9 +27,9 @@ use crate::{
         get_pre_keys_from_keys_entry, parse_keys_entry, serde_deserialize_from_base64,
         serde_serialize_to_base64,
     },
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 
 };
@@ -128,7 +128,7 @@ pub async fn new_medical_record(
 
             },
         };
-        let _ = ATSClient::send_event_from_state(&_state, event,"get_medical_record");
+        let _ = ALSClient::send_event_from_state(&_state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -314,7 +314,7 @@ pub async fn get_medical_record(
                 role_used: format!("{:?}", role),
             },
         };
-        let _ = ATSClient::send_event_from_state(&state, event,"get_medical_record");
+        let _ = ALSClient::send_event_from_state(&state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -496,7 +496,7 @@ pub async fn get_medical_record_update(
                 role_used: format!("{:?}", role),
             },
         };
-        let _ = ATSClient::send_event_from_state(&state, event,"get_medical_record");
+        let _ = ALSClient::send_event_from_state(&state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -780,7 +780,7 @@ pub async fn update_medical_record(
                 role_used: format!("{:?}", role),
             },
         };
-        let _ = ATSClient::send_event_from_state(&_state, event,"get_medical_record");
+        let _ = ALSClient::send_event_from_state(&_state, event,"get_medical_record");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

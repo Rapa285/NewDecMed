@@ -14,9 +14,9 @@ mod types;
 mod utils;
 
 
-// Modul ATS
-mod ats;
-use ats::{ATSClient};
+// Modul ALS
+mod als;
+use als::{ALSClient};
 
 use constants::{
     DECMED_ADDRESS_ID_OBJECT_ID, DECMED_ADDRESS_ID_OBJECT_VERSION, DECMED_GLOBAL_ADMIN_CAP_ID,
@@ -100,7 +100,7 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
         }
     }
 
-    ATSClient::start_retry_worker();
+    ALSClient::start_retry_worker();
 
     app.manage(Mutex::new(AppState {
         administrative_data: None,

@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::move_call::MoveCall;
-use crate::ats::ATSClient;
+use crate::als::ALSClient;
 
 // Enum
 

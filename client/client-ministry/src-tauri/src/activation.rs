@@ -6,9 +6,9 @@ use umbral_pre::encrypt;
 use uuid::Uuid;
 
 use crate::{
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
     client_error::ClientError,
     current_fn,
@@ -98,7 +98,7 @@ pub async fn create_activation_key(
                 transaction_digest : tx_digest.clone(),
             },
         };
-        let _ = ATSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
+        let _ = ALSClient::send_event_from_state(&state, event,"create_activation_key/ev6");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -194,7 +194,7 @@ pub async fn update_activation_key(
                 transaction_digest : tx_digest.clone(),
             },
         };
-        let _ = ATSClient::send_event_from_state(&state, event,"update_activation_key/ev6");
+        let _ = ALSClient::send_event_from_state(&state, event,"update_activation_key/ev6");
     }
     // ──────────────────────────────────────────────────────────────────────────────────
 

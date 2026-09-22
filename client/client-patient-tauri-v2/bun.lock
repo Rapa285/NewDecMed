@@ -200,7 +200,7 @@
 
     "@rollup/rollup-darwin-x64": ["@rollup/rollup-darwin-x64@4.45.3", "", { "os": "darwin", "cpu": "x64" }, "sha512-QLWyWmAJG9elNTNLdcSXUT/M+J7DhEmvs1XPHYcgYkse3UHf9iWTJ+yTPlKMIetiQnNi+cNp+gY4gvjDpREfKw=="],
 
-    "@rollup/rollup-freebsd-arm64": ["@rollup/rollup-freebsd-arm64@4.45.3", "", { "os": "freebsd", "cpu": "arm64" }, "sha512-ZOvBq+5nL0yrZIEo1eq6r7MPvkJ8kC1XATS/yHvcq3WbDNKNKBQ1uIF4hicyzDMoJt72G+sn1nKsFXpifZyRDA=="],
+    "@rollup/rollup-freebsd-arm64": ["@rollup/rollup-freebsd-arm64@4.45.3", "", { "os": "freebsd", "cpu": "arm64" }, "sha512-ZOvBq+5nL0yrZIEo1eq6r7MPvkJ8kC1XALS/yHvcq3WbDNKNKBQ1uIF4hicyzDMoJt72G+sn1nKsFXpifZyRDA=="],
 
     "@rollup/rollup-freebsd-x64": ["@rollup/rollup-freebsd-x64@4.45.3", "", { "os": "freebsd", "cpu": "x64" }, "sha512-AYvGR07wecEnyYSovyJ71pTOulbNvsrpRpK6i/IM1b0UGX1vFx51afYuPYPxnvE9aCl5xPnhQicEvdIMxClRgQ=="],
 

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// Matches the AuditEvent structure stored in ATS (as JSON in on-chain `json_data`)
+/// Matches the AuditEvent structure stored in ALS (as JSON in on-chain `json_data`)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AuditLogEntry {
     pub source_component: Option<String>,
@@ -9,7 +9,7 @@ pub struct AuditLogEntry {
     pub outcome: Option<String>,
     pub action_type: Option<String>,
     pub details: Option<serde_json::Value>,
-    /// Timestamp injected by ATS before storing
+    /// Timestamp injected by ALS before storing
     #[serde(default)]
     pub timestamp: Option<String>,
     /// Sequential index in on-chain store
@@ -17,8 +17,8 @@ pub struct AuditLogEntry {
     pub sequence: Option<u64>,
 }
 
-/// A page of raw on-chain log records returned by the ATS metadata endpoint.
-/// The ATS HTTP service wraps each `LogRecord.json_data` string here.
+/// A page of raw on-chain log records returned by the ALS metadata endpoint.
+/// The ALS HTTP service wraps each `LogRecord.json_data` string here.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LogsMetadataResponse {
     /// Parsed audit log entries
@@ -41,14 +41,14 @@ pub struct FetchLogsParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
-    pub ats_base_url: String,
+    pub als_base_url: String,
 }
 
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            // Matches ATS_BASE_URL from constants.rs in ministry/hospital clients
-            ats_base_url: "http://localhost:3000".to_string(),
+            // Matches ALS_BASE_URL from constants.rs in ministry/hospital clients
+            als_base_url: "http://localhost:3000".to_string(),
         }
     }
 }

@@ -33,10 +33,10 @@ use crate::types::{
 use crate::types::{GenerateJwtHandlerResponse, HandlerStoreKeysPayload};
 use crate::utils::Utils;
 
-// Tambahan untuk ATS
-use crate::ats::{
+// Tambahan untuk ALS
+use crate::als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     };
 use uuid::Uuid;
 
@@ -262,7 +262,7 @@ impl Handlers {
                         key_pattern: "keys:{}@{}".to_string(),
                     },
                 };
-               let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+               let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
             }
             // ────────────────────────────────────────────────────────────────────────────────────
             let access_keys: AccessKeys =
@@ -300,7 +300,7 @@ impl Handlers {
                         transaction_digest: None,
                     },
                 };
-               let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+               let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
             }
 
             // ────────────────────────────────────────────────────────────────────────────────────
@@ -440,7 +440,7 @@ impl Handlers {
                         key_pattern: "keys:{}@{}".to_string(),
                     },
                 };
-               let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+               let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
             }
             // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -480,7 +480,7 @@ impl Handlers {
                         transaction_digest: None,
                     },
                 };
-                let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+                let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
             }
 
             // ────────────────────────────────────────────────────────────────────────────────────
@@ -647,7 +647,7 @@ impl Handlers {
                         key_pattern: "keys:{}@{}".to_string(),
                     },
                 };
-               let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+               let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
             }
             // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -686,7 +686,7 @@ impl Handlers {
                         transaction_digest: None,
                     },
                 };
-                let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+                let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
             }
 
             // ────────────────────────────────────────────────────────────────────────────────────
@@ -811,7 +811,7 @@ impl Handlers {
                     transaction_digest: None,
                 },
             };
-            let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+            let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
         }
 
         // ────────────────────────────────────────────────────────────────────────────────────
@@ -844,7 +844,7 @@ impl Handlers {
                     key_pattern: "nonce:{}".to_string(),
                 },
             };
-            let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+            let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
         }
         // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -890,7 +890,7 @@ impl Handlers {
                     key_pattern: "nonce:{}".to_string(),
                 },
             };
-        let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+        let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
         }
         // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -925,7 +925,7 @@ impl Handlers {
                     key_pattern: "nonce:{}".to_string(),
                 },
             };
-            let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+            let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
         }
         // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -1032,7 +1032,7 @@ impl Handlers {
                     key_pattern: "keys:{}@{}".to_string(),
                 },
             };
-            let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
+            let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/get_administrative_data");
         }
         // ────────────────────────────────────────────────────────────────────────────────────
 

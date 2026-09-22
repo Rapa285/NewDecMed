@@ -7,9 +7,9 @@ use iota_types::{
 };
 
 use crate::{
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
     client_error::ClientError,
     constants::GAS_BUDGET,
@@ -117,7 +117,7 @@ impl MoveCall {
                         .collect(),
                 },
             };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+           let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 
@@ -251,7 +251,7 @@ impl MoveCall {
                         .collect(),
                 },
             };
-           let _ = ATSClient::send_event_from_state(&state, event,"create_capability");
+           let _ = ALSClient::send_event_from_state(&state, event,"create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 

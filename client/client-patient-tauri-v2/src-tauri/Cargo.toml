@@ -59,7 +59,7 @@ strum_macros = "0.27"
 anyhow = "1.0"
 thiserror = "2.0"
 
-# Dependency ATS
+# Dependency ALS
 ed25519-dalek = { version = "2", features = ["rand_core"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "rustls-tls"] }
 tokio = { version = "1.44.2", features = ["rt-multi-thread"] }

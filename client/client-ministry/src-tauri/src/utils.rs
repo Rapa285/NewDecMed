@@ -34,9 +34,9 @@ use crate::{
     constants::{GAS_STATION_BASE_URL, HASH_SALT, IOTA_URL},
     current_fn,
     types::{ExecuteTxResponse, KeysEntry, ReserveGasResponse, AppState},
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 };
 
@@ -177,7 +177,7 @@ pub async fn execute_tx(
         },
     };
 
-   let _ = ATSClient::send_event_from_state(&state, event,"iota_transaction");
+   let _ = ALSClient::send_event_from_state(&state, event,"iota_transaction");
 
     Ok(ex_tx_res)
 }

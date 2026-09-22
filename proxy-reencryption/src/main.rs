@@ -8,8 +8,8 @@ mod tes_error;
 mod types;
 mod utils;
 
-// module ATS
-mod ats;
+// module ALS
+mod als;
 
 use std::{env, error::Error, str::FromStr, sync::Arc};
 
@@ -32,8 +32,8 @@ use move_call::MoveCall;
 use tower::ServiceBuilder;
 use types::{AppState, DecmedPackage};
 
-// use ATS
-use crate::ats::ATSClient;
+// use ALS
+use crate::als::ALSClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -88,9 +88,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         redis_pool,
     });
 
-    // Start ATS Worker
-    // println!("[ATS] Starting Retry Woker from main");
-    ATSClient::start_retry_worker();
+    // Start ALS Worker
+    // println!("[ALS] Starting Retry Woker from main");
+    ALSClient::start_retry_worker();
 
     let protected_routes = Router::new()
         .route("/", get(|| async { "Hello, world!" }))

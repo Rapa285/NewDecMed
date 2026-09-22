@@ -48,9 +48,9 @@ use crate::{
     current_fn,
     proxy_error::ProxyError,
     types::{ExecuteTxResponse, ReserveGasResponse, SuccessResponse, UtilIpfsAddResponse,AppState},
-    ats::{
+    als::{
         AuditEvent, AuditEventDetails, AuditOutcome, Event,
-        AuditActionType, AuditActorType, AuditTargetObjectType, ATSClient
+        AuditActionType, AuditActorType, AuditTargetObjectType, ALSClient
     },
 };
 
@@ -88,7 +88,7 @@ impl Utils {
                     ipfs_node_url: IPFS_BASE_URL.to_string(),
                 },
             };
-           let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
+           let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
         }
         // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -384,7 +384,7 @@ impl Utils {
             },
         };
 
-       let _ = ATSClient::send_event_from_state(&state, event,"iota_transaction");
+       let _ = ALSClient::send_event_from_state(&state, event,"iota_transaction");
 
         Ok(ex_tx_res)
     }
@@ -447,7 +447,7 @@ impl Utils {
                     ipfs_node_url: IPFS_GATEWAY_BASE_URL.to_string(),
                 },
             };
-           let _ = ATSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
+           let _ = ALSClient::send_event_from_state(&state, event,"pre/handlers/create_medical_record");
         }
         // ────────────────────────────────────────────────────────────────────────────────────
 
@@ -625,7 +625,7 @@ impl Utils {
                         .collect(),
                 },
             };
-           let _ = ATSClient::send_event_from_state(&state, event, "create_capability");
+           let _ = ALSClient::send_event_from_state(&state, event, "create_capability");
         }
         // ──────────────────────────────────────────────────────────────────────────────────
 

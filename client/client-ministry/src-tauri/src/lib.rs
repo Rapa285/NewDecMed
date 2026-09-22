@@ -7,8 +7,8 @@ mod move_call;
 mod types;
 mod utils;
 
-// Modul ATS
-mod ats;
+// Modul ALS
+mod als;
 
 use std::str::FromStr;
 
@@ -17,7 +17,7 @@ use keyring::Entry;
 use tauri::{async_runtime::Mutex, Manager};
 
 use crate::{
-    ats::ATSClient,
+    als::ALSClient,
     constants::{
         DECMED_ADDRESS_ID_OBJECT_ID, DECMED_ADDRESS_ID_OBJECT_VERSION, DECMED_GLOBAL_ADMIN_CAP_ID,
         DECMED_HOSPITAL_ID_METADATA_OBJECT_ID, DECMED_HOSPITAL_ID_METADATA_OBJECT_VERSION,
@@ -76,7 +76,7 @@ fn setup(app: &mut tauri::App) -> std::result::Result<(), Box<dyn std::error::Er
         }
     }
 
-    ATSClient::start_retry_worker();
+    ALSClient::start_retry_worker();
 
     app.manage(Mutex::new(AppState {
         keys_entry,
