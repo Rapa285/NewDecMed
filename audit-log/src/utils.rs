@@ -283,6 +283,48 @@ impl Utils {
 
         Ok(audit_event)
     }
+
+
+    // pub fn verify_record(record: &AuditRecord) -> bool {
+    //     let expected = Self::calculate_record_hash(
+    //         record.record_id,
+    //         record.timestamp,
+    //         record.prev_record_hash.clone(),
+    //         &record.event,
+    //     );
+    //     record.record_hash == expected
+    // }
+ 
+    // /// Verifikasi seluruh rantai AuditRecord secara berurutan.
+    // /// Mengembalikan Ok(()) apabila semua record valid dan nilai
+    // /// prev_record_hash setiap record cocok dengan record_hash
+    // /// record sebelumnya. Mengembalikan Err dengan pesan deskriptif
+    // /// apabila ditemukan ketidaksesuaian.
+    // pub fn verify_chain(records: &[AuditRecord]) -> Result<(), String> {
+    //     let mut prev_hash: Option<String> = None;
+ 
+    //     for (i, record) in records.iter().enumerate() {
+    //         // 1. Periksa prev_record_hash cocok dengan rantai sebelumnya
+    //         if record.prev_record_hash != prev_hash {
+    //             return Err(format!(
+    //                 "record {}: prev_hash mismatch (expected {:?}, got {:?})",
+    //                 i + 1,
+    //                 prev_hash,
+    //                 record.prev_record_hash
+    //             ));
+    //         }
+ 
+    //         // 2. Periksa record_hash valid (tidak dimodifikasi)
+    //         if !Self::verify_record(record) {
+    //             return Err(format!("record {}: hash mismatch", i + 1));
+    //         }
+ 
+    //         prev_hash = Some(record.record_hash.clone());
+    //     }
+ 
+    //     Ok(())
+    // }
+
 }
 
 
