@@ -1,4 +1,4 @@
-// audit-trail/src/bin/generate_als_key.rs
+// audit-log/src/bin/generate_als_key.rs
 
 use p256::{
     ecdsa::SigningKey,

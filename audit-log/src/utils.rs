@@ -42,7 +42,7 @@ impl Utils {
         let body = Body::wrap_stream(stream);
 
         let file_part = reqwest::multipart::Part::stream(body)
-            .file_name("audit_trail.log")
+            .file_name("audit_log.log")
             .mime_str("text/plain")
             .context(current_fn!())?;
 

@@ -12,7 +12,7 @@ export class AuditorHomeState {
 	loadError = $state<string | null>(null);
 
 	isSettingsOpen = $state(false);
-	settings = $state<AppSettings>({ audit_trail_base_url: '', ipfs_gateway_base_url: '' });
+	settings = $state<AppSettings>({ audit_log_base_url: '', ipfs_gateway_base_url: '' });
 	isSavingSettings = $state(false);
 
 	selectedRecord = $state<LogRecord | null>(null);

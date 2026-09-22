@@ -1,13 +1,13 @@
 # client-auditor (Tauri 2 + SvelteKit)
 
 Desktop client for auditors: browse on-chain `LogRecord` metadata from the
-`audit-trail` service, then inspect the underlying rotated log file
+`audit-log` service, then inspect the underlying rotated log file
 (newline-delimited `AuditRecord`s) fetched straight from IPFS.
 
 This rebuilds `client-auditor` as a **SvelteKit** app (Svelte 5 runes,
 `adapter-static`, Tailwind v4) so it matches the pattern used by
 `client-ministry` and `client-hospital-tauri`, instead of the vanilla
-HTML/JS approach used in `audit-trail-client`.
+HTML/JS approach used in `audit-log-client`.
 
 ## Structure
 
@@ -30,7 +30,7 @@ client-auditor/
     │   ├── lib.rs                # setup, plugin-store, command registration
     │   ├── commands.rs           # fetch_logs, fetch_log_entries,
     │   │                            get_settings, save_settings
-    │   ├── api.rs                 # reqwest client: audit-trail + IPFS gateway
+    │   ├── api.rs                 # reqwest client: audit-log + IPFS gateway
     │   ├── types.rs                # LogMetadata / LogRecord / AuditLogEntry / AppSettings
     │   ├── state.rs                 # AppState (http client + settings)
     │   └── error.rs                 # ClientError
@@ -40,16 +40,16 @@ client-auditor/
 
 ## What it calls
 
-- `GET {audit_trail_base_url}/api/logs?cursor=&limit=` — paginated
-  `LogRecord` metadata (same contract `audit-trail-client` assumes; see
-  `audit-trail/src/handlers.rs::get_logs`).
+- `GET {audit_log_base_url}/api/logs?cursor=&limit=` — paginated
+  `LogRecord` metadata (same contract `audit-log-client` assumes; see
+  `audit-log/src/handlers.rs::get_logs`).
 - `GET {ipfs_gateway_base_url}/ipfs/{cid}` — the rotated log file for a
   given `LogRecord`, parsed client-side as newline-delimited JSON
-  `AuditRecord`s (see `audit-trail/src/types.rs::AuditRecord`).
+  `AuditRecord`s (see `audit-log/src/types.rs::AuditRecord`).
 
 Both URLs are configurable from the in-app Settings modal and persisted
 via `tauri-plugin-store` (`settings.json` in the app data dir), same
-approach as `audit-trail-client`.
+approach as `audit-log-client`.
 
 ## Known gap
 

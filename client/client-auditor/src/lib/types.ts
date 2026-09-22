@@ -35,7 +35,7 @@ export type AuditLogEntry = {
 };
 
 export type AppSettings = {
-	audit_trail_base_url: string;
+	audit_log_base_url: string;
 	ipfs_gateway_base_url: string;
 };
 

@@ -5,7 +5,7 @@ pub enum ClientError {
     #[error("Request failed: {0}")]
     Request(#[from] reqwest::Error),
 
-    #[error("Audit-trail returned an error ({status}): {body}")]
+    #[error("audit-log returned an error ({status}): {body}")]
     ServerError { status: u16, body: String },
 
     #[error("Invalid base URL: {0}")]

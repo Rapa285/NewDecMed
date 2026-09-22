@@ -13,7 +13,7 @@ pub struct EncryptedSignedEvent {
     pub iota_address: String,  // untuk verifikasi signature di ALS server
 }
 
-// ── Enums (harus cocok dengan audit-trail/src/types.rs) ──────────────────────
+// ── Enums (harus cocok dengan audit-log/src/types.rs) ──────────────────────
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -103,7 +103,7 @@ pub struct Event {
     pub details: AuditEventDetails,
 }
 
-// ── AuditEventDetails (harus cocok dengan audit-trail/src/types.rs) ───────────
+// ── AuditEventDetails (harus cocok dengan audit-log/src/types.rs) ───────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "event_type")]

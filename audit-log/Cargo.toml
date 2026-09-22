@@ -1,5 +1,5 @@
 [package]
-name = "audit-trail"
+name = "audit-log"
 version = "0.1.0"
 edition = "2021"
 

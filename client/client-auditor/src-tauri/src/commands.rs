@@ -8,13 +8,13 @@ use crate::state::AppState;
 const SETTINGS_STORE_FILE: &str = "settings.json";
 const SETTINGS_KEY: &str = "app_settings";
 
-/// Fetch a page of on-chain log metadata from the audit-trail service.
+/// Fetch a page of on-chain log metadata from the audit-log service.
 #[tauri::command]
 pub async fn fetch_logs(
     state: State<'_, AppState>,
     params: FetchLogsParams,
 ) -> Result<LogsResponse, ClientError> {
-    let base_url = state.settings.read().await.audit_trail_base_url.clone();
+    let base_url = state.settings.read().await.audit_log_base_url.clone();
     state.client.fetch_logs(&base_url, params).await
 }
 
@@ -29,7 +29,7 @@ pub async fn fetch_log_entries(
     state.client.fetch_log_file(&gateway, &cid).await
 }
 
-/// Read current settings (audit-trail base URL, IPFS gateway URL).
+/// Read current settings (audit-log base URL, IPFS gateway URL).
 #[tauri::command]
 pub async fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, ClientError> {
     Ok(state.settings.read().await.clone())

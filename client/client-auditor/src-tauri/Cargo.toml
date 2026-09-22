@@ -1,7 +1,7 @@
 [package]
 name = "client-auditor"
 version = "0.1.0"
-description = "DecMed auditor desktop client — view audit trail logs (IPFS) with metadata from IOTA"
+description = "DecMed auditor desktop client — view Audit Log logs (IPFS) with metadata from IOTA"
 authors = ["decmed"]
 edition = "2021"
 

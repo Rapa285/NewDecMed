@@ -14,7 +14,7 @@
 
 <div class="flex items-center justify-between border-b border-zinc-200 pb-2">
 	<div>
-		<h2 class="font-medium">Audit Trail — Log Metadata</h2>
+		<h2 class="font-medium">Audit Log — Log Metadata</h2>
 		<p class="text-sm text-zinc-400">On-chain log batches, verifiable against IPFS.</p>
 	</div>
 	<div class="flex items-center gap-2">
@@ -112,13 +112,13 @@
 				</button>
 			</div>
 			<div class="container-input-text mb-3">
-				<label for="audit-trail-base-url">Audit-trail base URL</label>
+				<label for="audit-log-base-url">audit-log base URL</label>
 				<input
-					id="audit-trail-base-url"
+					id="audit-log-base-url"
 					type="text"
 					class="input-base"
 					placeholder="http://localhost:3000"
-					bind:value={state.settings.audit_trail_base_url}
+					bind:value={state.settings.audit_log_base_url}
 				/>
 			</div>
 			<div class="container-input-text mb-4">
